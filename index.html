@@ -1,0 +1,2419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title data-i18n="doc.title">img2vector — PNG 图层转激光切割矢量</title>
+<style>
+  :root{
+    --bg:#0f1115; --fg:#e8eaed; --muted:#9aa0a6; --panel:#171a21; --panel2:#1f232c;
+    --line:#2a2f3a; --accent:#7aa2ff; --accent2:#5b8def; --good:#7ad4a3; --warn:#e6b35a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;background:#0c0e12;position:sticky;top:0;z-index:10}
+  header h1{font-size:16px;margin:0;letter-spacing:.4px}
+  header h1 span{color:var(--muted);font-weight:400}
+  nav.steps{display:flex;gap:6px;flex:1}
+  nav.steps button{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;font-size:12px}
+  nav.steps button.active{background:var(--accent);color:#0c0e12;border-color:var(--accent);font-weight:600}
+  nav.steps button.done{border-color:var(--good);color:var(--good)}
+  nav.steps button:disabled{opacity:.4;cursor:not-allowed}
+  .lang-switch{display:flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-shrink:0}
+  .lang-switch button{background:transparent;border:0;color:var(--muted);padding:6px 10px;cursor:pointer;font-size:12px;font:inherit}
+  .lang-switch button.active{background:var(--accent);color:#0c0e12;font-weight:600}
+  main{max-width:1200px;margin:0 auto;padding:22px}
+  section.step{display:none}
+  section.step.active{display:block}
+  h2{font-size:18px;margin:0 0 6px}
+  .hint{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:14px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+  label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+  label.inline{flex-direction:row;align-items:center;gap:8px;color:var(--fg)}
+  input[type="number"],input[type="text"],select{background:var(--panel2);border:1px solid var(--line);color:var(--fg);padding:7px 9px;border-radius:6px;width:130px;font:inherit}
+  input[type="file"]{display:none}
+  button.primary,button.secondary,button.ghost{padding:9px 16px;border-radius:7px;border:1px solid var(--line);cursor:pointer;font:inherit}
+  button.primary{background:var(--accent);color:#0c0e12;border-color:var(--accent);font-weight:600}
+  button.primary:hover{background:var(--accent2)}
+  button.secondary{background:var(--panel2);color:var(--fg)}
+  button.ghost{background:transparent;color:var(--muted)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .footer-actions{display:flex;justify-content:space-between;margin-top:18px}
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:50px;text-align:center;color:var(--muted);transition:all .15s}
+  .drop.over{border-color:var(--accent);background:rgba(122,162,255,.07);color:var(--fg)}
+  .drop p{margin:6px 0}
+  .drop button{margin-top:10px}
+  .group-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:14px;margin-bottom:10px;display:flex;gap:14px;align-items:center}
+  .group-card .thumb{width:80px;height:80px;border-radius:6px;background:#0a0c10;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:1px solid var(--line)}
+  .group-card .thumb canvas,.group-card .thumb svg{max-width:100%;max-height:100%}
+  .group-card .meta{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+  .group-card .meta strong{font-size:14px}
+  .group-card .meta .layers{color:var(--muted);font-size:12px}
+  .group-card .controls{display:flex;gap:10px;flex-wrap:wrap}
+  .preview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+  .preview-tile{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center}
+  .preview-tile svg{display:block;margin:0 auto;background:#0a0c10;border-radius:4px}
+  .preview-tile .cap{font-size:11px;color:var(--muted);margin-top:6px}
+  .nest-tile{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px}
+  .nest-tile h4{margin:0 0 6px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:6px;min-height:22px}
+  .nest-tile h4 > span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nest-tile h4 .pill{flex-shrink:0}
+  .nest-tile h4 .count{color:var(--muted);font-weight:400;font-size:11px}
+  .nest-tile svg{width:100%;height:auto;background:#0a0c10;border-radius:4px;display:block}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:11px;color:var(--muted)}
+  .pill.warn{background:rgba(230,179,90,.12);color:var(--warn);border-color:rgba(230,179,90,.4)}
+  .pill.good{background:rgba(122,212,163,.1);color:var(--good);border-color:rgba(122,212,163,.4)}
+  .check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+  .check-grid label{padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);cursor:pointer;flex-direction:row;align-items:center;gap:8px;color:var(--fg)}
+  .check-grid label.checked{border-color:var(--accent);background:rgba(122,162,255,.08)}
+  .progress-line{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin:6px 0 0}
+  .progress-line>div{height:100%;background:var(--accent);width:0;transition:width .2s}
+  details{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 12px;margin-top:8px}
+  details summary{cursor:pointer;color:var(--muted);font-size:12px}
+  details p{color:var(--muted);font-size:12px;margin:8px 0 0}
+  code{background:var(--panel2);padding:1px 6px;border-radius:4px;font-size:12px}
+
+  /* Loading spinner */
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:6px}
+  .spinner.lg{width:22px;height:22px;border-width:3px}
+  button.loading{position:relative;color:transparent !important}
+  button.loading::after{content:"";position:absolute;left:50%;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;border:2px solid rgba(255,255,255,.3);border-top-color:#0c0e12;border-radius:50%;animation:spin .7s linear infinite}
+  button.secondary.loading::after,button.ghost.loading::after{border-top-color:var(--accent)}
+  /* Section-scoped busy state: disables interactive controls in a panel without
+     hiding live status/progress/output. No fullscreen blanket. */
+  .panel.busy input, .panel.busy select { pointer-events:none; opacity:.55 }
+  .panel.busy > .row > button:not(.loading) { pointer-events:none; opacity:.55 }
+  .processing-bar{display:none;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;background:rgba(122,162,255,.07);border:1px solid rgba(122,162,255,.25);color:var(--accent);font-size:12px;margin-top:10px}
+  .processing-bar.active{display:flex}
+
+  /* Magnify-on-hover. The small SVG/canvas is wrapped in .magnify-frame so
+     the lens and pane can be siblings inside it. CSS — not JS — handles
+     sizing: the pane uses left:100% with width:100%/height:100% so it sits
+     immediately to the right of the source at exactly the same dimensions. */
+  .magnify{cursor:zoom-in}
+  .magnify-frame{position:relative;display:block;line-height:0}
+  .magnify-lens{position:absolute;pointer-events:none;border:2px solid var(--accent);background:rgba(122,162,255,.08);border-radius:4px;display:none;box-shadow:0 0 0 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.5);z-index:5}
+  .magnify-pane{position:absolute;left:calc(100% + 12px);top:0;width:100%;height:100%;pointer-events:none;background:#0a0c10;border:1px solid var(--accent);border-radius:8px;display:none;overflow:hidden;z-index:30;box-shadow:0 8px 30px rgba(0,0,0,.6)}
+  .magnify-pane > *{position:absolute;left:0;top:0;transform-origin:0 0}
+
+  /* Per-image card (step 3) */
+  .img-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;margin-bottom:10px;overflow:hidden}
+  .img-card > summary{list-style:none;padding:12px 14px;display:flex;gap:14px;align-items:center;cursor:pointer;user-select:none}
+  .img-card > summary::-webkit-details-marker{display:none}
+  .img-card > summary::before{content:"▸";color:var(--muted);font-size:11px;transition:transform .15s;width:10px;display:inline-block}
+  .img-card[open] > summary::before{transform:rotate(90deg)}
+  .img-card .thumb{width:60px;height:60px;border-radius:6px;background:#0a0c10;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:1px solid var(--line)}
+  .img-card .summary-meta{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+  .img-card .summary-meta strong{font-size:14px}
+  .img-card .summary-meta .sub{color:var(--muted);font-size:11px}
+  .img-card .summary-tags{display:flex;gap:6px;flex-wrap:wrap}
+  .img-card .body{padding:14px;border-top:1px solid var(--line);background:rgba(0,0,0,.15)}
+  .img-card .body .row{margin-bottom:12px}
+  .layer-split-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-top:10px}
+  .layer-split-tile{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px;text-align:center}
+  .layer-split-tile svg{display:block;margin:0 auto;background:#0a0c10;border-radius:4px}
+  .layer-split-tile .cap{font-size:10px;color:var(--muted);margin-top:4px}
+  .nest-bench{display:none;margin-top:10px;padding:10px 12px;background:#0a0c10;border:1px solid var(--line);border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:var(--muted);white-space:pre;overflow-x:auto;line-height:1.5}
+  .nest-bench.show{display:block}
+  .nest-bench .total{color:var(--fg);font-weight:600}
+  h3.section-title{margin:0 0 4px;font-size:14px;color:var(--fg)}
+  .panel.notice{background:rgba(230,179,90,.06);border-color:rgba(230,179,90,.3)}
+  .panel.notice .row{margin-top:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>img2vector <span data-i18n="header.tagline">· PNG 图层转激光切割矢量</span></h1>
+  <nav class="steps" id="stepsNav">
+    <button data-go="1" class="active" data-i18n="nav.step1">1 · 上传</button>
+    <button data-go="2" disabled data-i18n="nav.step2">2 · 边框</button>
+    <button data-go="3" disabled data-i18n="nav.step3">3 · 板材与套料</button>
+    <button data-go="4" disabled data-i18n="nav.step4">4 · 导出</button>
+  </nav>
+  <div class="lang-switch" id="langSwitch" role="group" aria-label="Language">
+    <button data-lang="zh" class="active">中文</button>
+    <button data-lang="en">EN</button>
+  </div>
+</header>
+
+<main>
+  <section class="step active" data-step="1">
+    <h2 data-i18n="s1.heading">拖入你的 PNG 图层</h2>
+    <p class="hint" data-i18n-html="s1.hint">每个 PNG 应为带透明通道的图层。文件名必须以 <code>_&lt;数字&gt;.png</code> 结尾——例如 <code>mushroom_1.png</code>、<code>red_apple_02.png</code>。系统会按最后一个下划线之前的部分对图层进行分组。</p>
+    <div class="drop" id="drop">
+      <p><strong data-i18n="s1.dropTitle">拖放 PNG 到这里</strong></p>
+      <p data-i18n="s1.or">或</p>
+      <button class="primary" id="pickBtn" data-i18n="s1.choose">选择文件…</button>
+      <input type="file" id="fileInput" multiple accept="image/png" />
+    </div>
+    <div id="ingestStatus" class="hint" style="margin-top:14px"></div>
+    <div id="groupList"></div>
+    <div class="footer-actions">
+      <span></span>
+      <button class="primary" id="toStep2" disabled data-i18n="s1.continue">继续 → 边框</button>
+    </div>
+  </section>
+
+  <section class="step" data-step="2">
+    <h2 data-i18n="s2.heading">边框选项</h2>
+    <p class="hint" data-i18n="s2.hint">边框是依据每个图层的 Alpha 通道边缘描绘出的激光切割路径。</p>
+    <div class="panel">
+      <div class="row">
+        <label data-i18n="s2.weight">线宽 (mm)<input type="number" id="borderWeight" min="0" step="0.01" value="0.01" /></label>
+        <label data-i18n="s2.position">位置<select id="borderMode">
+          <option value="outer" data-i18n="s2.posOuter">外侧（向外扩展形状）</option>
+          <option value="inner" data-i18n="s2.posInner">内侧（向内收缩形状）</option>
+          <option value="half" selected data-i18n="s2.posHalf">居中（沿原边缘）</option>
+        </select></label>
+        <label data-i18n="s2.edges">边缘<select id="traceMode">
+          <option value="aa" selected data-i18n="s2.edgeAA">抗锯齿（平滑）</option>
+          <option value="px" data-i18n="s2.edgePx">像素精确（阶梯状）</option>
+        </select></label>
+        <label data-i18n="s2.workRes">工作分辨率 (像素 / 最长边)<input type="number" id="workRes" min="200" step="50" value="5000" /></label>
+        <button class="secondary" id="recomputeBorders" data-i18n="s2.recompute">重新计算预览</button>
+      </div>
+      <div class="row" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+        <label data-i18n="s2.mergeGap">合并间距 (mm)<input type="number" id="mergeGap" min="0" step="0.01" value="0.01" /></label>
+        <label data-i18n="s2.minPiece">最小碎片面积 (mm²)<input type="number" id="minPiece" min="0" step="0.01" value="0.03" /></label>
+        <span class="hint" style="margin:0;flex:1;min-width:200px" data-i18n-html="s2.mergeHint">距离另一碎片不超过 <em>合并间距</em> 的微小碎片会被桥接合并；合并后仍小于 <em>最小碎片面积</em> 的碎片会被丢弃。</span>
+      </div>
+      <details><summary data-i18n="s2.whatMean">这些参数是什么意思？</summary>
+        <p data-i18n-html="s2.explain"><strong>外侧</strong>：将 Alpha 形状沿外侧扩张所设线宽，切割线落在印刷图案之外。<br>
+        <strong>内侧</strong>：将 Alpha 形状沿内侧收缩，切割线落在印刷图案之内。<br>
+        <strong>居中</strong>：切割线正好沿 Alpha 边缘（不使用线宽偏移）。<br>
+        <strong>像素精确</strong>：输出原始的阶梯状边界；<strong>抗锯齿</strong>则简化为平滑折线。<br>
+        <strong>合并间距</strong>：在该距离内闭合缝隙——靠近较大碎片的小碎片会被融合进去。设为 0 表示关闭。<br>
+        <strong>最小碎片面积</strong>：移除剩余面积低于该阈值的碎片。设为 0 表示关闭。</p>
+      </details>
+    </div>
+    <div id="borderPreview" class="preview-grid"></div>
+    <div class="footer-actions">
+      <button class="ghost" data-go="1" data-i18n="common.back">← 返回</button>
+      <button class="primary" id="toStep3" data-i18n="s2.continue">继续 → 板材与套料</button>
+    </div>
+  </section>
+
+  <section class="step" data-step="3">
+    <h2 data-i18n="s3.heading">板材与套料</h2>
+    <p class="hint" data-i18n="s3.hint">为每张图设置尺寸、数量与拆分策略，然后配置板材并运行套料算法。</p>
+
+    <div class="panel">
+      <h3 class="section-title" data-i18n="s3.perImage">逐图设置</h3>
+      <p class="hint" style="margin-bottom:10px" data-i18n-html="s3.perImageHint">每张卡片设置渲染后的 <strong>毫米尺寸</strong>、整图的 <strong>数量</strong>，以及如何将其图层 <strong>拆分为碎片</strong> 以便更紧凑地套料。</p>
+      <div class="row" style="padding:10px;background:rgba(122,162,255,.05);border:1px solid rgba(122,162,255,.18);border-radius:6px;margin-bottom:12px">
+        <label data-i18n="s3.defaultSplit">默认拆分策略<select id="globalSplit">
+          <option value="0" selected data-i18n="s3.split0">关闭 · 保持每个图层为整体</option>
+          <option value="1" data-i18n="s3.split1">1 · 智能拆分（分离独立块；保留孔洞）</option>
+          <option value="2" data-i18n="s3.split2">2 · 激进（每个封闭形状独立）</option>
+          <option value="3" data-i18n="s3.split3">3 · 仅外轮廓（分离独立块；丢弃孔洞）</option>
+        </select></label>
+        <button class="secondary" id="applyGlobalSplit" data-i18n="s3.applyAll">应用默认值到所有图像</button>
+        <span class="hint" style="margin:0" data-i18n="s3.openCard">展开卡片可逐图覆盖并预览碎片。</span>
+      </div>
+      <div id="perImageList"></div>
+    </div>
+
+    <div class="panel">
+      <h3 class="section-title" data-i18n="s3.sheet">板材</h3>
+      <p class="hint" style="margin-bottom:10px" data-i18n-html="s3.sheetHint">每张切割板 <strong>仅包含一个图层</strong>，按其数量（或拆分后的碎片数）重复排列。若一张板放不下，系统会自动溢出到第 2、3、… 张板。</p>
+      <div class="row">
+        <label data-i18n="s3.sheetW">板材宽度 (mm)<input type="number" id="sheetW" min="10" step="1" value="200" /></label>
+        <label data-i18n="s3.sheetH">板材高度 (mm)<input type="number" id="sheetH" min="10" step="1" value="240" /></label>
+        <label data-i18n="s3.edgeMargin">边缘留白 (mm)<input type="number" id="edgeMargin" min="0" step="0.5" value="3" /></label>
+        <label data-i18n="s3.partGap">件间间距 (mm)<input type="number" id="partGap" min="0" step="0.5" value="2" /></label>
+        <label data-i18n="s3.rotation">旋转方式<select id="rotMode">
+          <option value="free" data-i18n="s3.rotFree">自由（最佳拟合）</option>
+          <option value="90" data-i18n="s3.rot90">90° 增量</option>
+          <option value="0" data-i18n="s3.rot0">不旋转</option>
+        </select></label>
+      </div>
+    </div>
+
+    <div class="panel notice">
+      <p style="margin:0;color:var(--warn)" data-i18n-html="s3.notice">⏱ <strong>提示：</strong>套料计算量较大。更高的数量、自由旋转以及激进拆分都会增加运行时间——可能从几秒到一分钟以上。运行前请先确认尺寸、数量和拆分预览是否符合预期。</p>
+      <div class="row">
+        <button class="primary" id="runNest" data-i18n="s3.runNest">运行套料</button>
+        <span id="nestStatus" class="hint" style="margin:0"></span>
+      </div>
+      <div class="progress-line"><div id="nestProgress"></div></div>
+      <div id="nestBench" class="nest-bench"></div>
+    </div>
+
+    <div id="nestPreview" class="preview-grid"></div>
+    <div class="footer-actions">
+      <button class="ghost" data-go="2" data-i18n="common.back">← 返回</button>
+      <button class="primary" id="toStep4" disabled data-i18n="s3.continue">继续 → 导出</button>
+    </div>
+  </section>
+
+  <section class="step" data-step="4">
+    <h2 data-i18n="s4.heading">导出</h2>
+    <p class="hint" data-i18n="s4.hint">选择需要的格式。所有文件会打包为单个 .zip 下载——每个（图层，板材，格式）组合对应一个文件。</p>
+    <div class="panel">
+      <p style="margin:0 0 8px;color:var(--muted);font-size:12px" data-i18n="s4.formats">格式</p>
+      <div class="check-grid" id="formatGrid">
+        <label data-fmt="ai" class="checked"><input type="checkbox" checked> <span data-i18n="s4.aiLabel">AI</span> <span class="pill" data-i18n="s4.aiPill">Illustrator</span></label>
+        <label data-fmt="dxf" class="checked"><input type="checkbox" checked> <span data-i18n="s4.dxfLabel">DXF</span> <span class="pill" data-i18n="s4.dxfPill">CAD</span></label>
+        <label data-fmt="plt" class="checked"><input type="checkbox" checked> <span data-i18n="s4.pltLabel">PLT</span> <span class="pill" data-i18n="s4.pltPill">HPGL</span></label>
+        <label data-fmt="svg"><input type="checkbox"> <span data-i18n="s4.svgLabel">SVG</span> <span class="pill" data-i18n="s4.svgPill">预览</span></label>
+      </div>
+      <div class="row" style="margin-top:16px">
+        <button class="primary" id="exportBtn" data-i18n="s4.download">下载 .zip</button>
+        <span id="exportStatus" class="hint" style="margin:0"></span>
+      </div>
+    </div>
+    <div class="footer-actions">
+      <button class="ghost" data-go="3" data-i18n="common.back">← 返回</button>
+      <span></span>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+/* ---------- i18n ---------- */
+const I18N = {
+  zh: {
+    "doc.title": "img2vector — PNG 图层转激光切割矢量",
+    "header.tagline": "· PNG 图层转激光切割矢量",
+    "nav.step1": "1 · 上传",
+    "nav.step2": "2 · 边框",
+    "nav.step3": "3 · 板材与套料",
+    "nav.step4": "4 · 导出",
+    "common.back": "← 返回",
+    "overlay.working": "处理中…",
+
+    "s1.heading": "拖入你的 PNG 图层",
+    "s1.hint": "每个 PNG 应为带透明通道的图层。文件名必须以 <code>_&lt;数字&gt;.png</code> 结尾——例如 <code>mushroom_1.png</code>、<code>red_apple_02.png</code>。系统会按最后一个下划线之前的部分对图层进行分组。",
+    "s1.dropTitle": "拖放 PNG 到这里",
+    "s1.or": "或",
+    "s1.choose": "选择文件…",
+    "s1.continue": "继续 → 边框",
+    "s1.loading": "正在加载 {n} 个文件…",
+    "s1.summary": "{layers} 个图层,共 {groups} 张图像。",
+    "s1.layerInfo": "{n} 个图层 · {w}×{h} px",
+
+    "s2.heading": "边框选项",
+    "s2.hint": "边框是依据每个图层的 Alpha 通道边缘描绘出的激光切割路径。",
+    "s2.weight": "线宽 (mm)",
+    "s2.position": "位置",
+    "s2.posOuter": "外侧（向外扩展形状）",
+    "s2.posInner": "内侧（向内收缩形状）",
+    "s2.posHalf": "居中（沿原边缘）",
+    "s2.edges": "边缘",
+    "s2.edgeAA": "抗锯齿（平滑）",
+    "s2.edgePx": "像素精确（阶梯状）",
+    "s2.workRes": "工作分辨率 (像素 / 最长边)",
+    "s2.recompute": "重新计算预览",
+    "s2.mergeGap": "合并间距 (mm)",
+    "s2.minPiece": "最小碎片面积 (mm²)",
+    "s2.mergeHint": "距离另一碎片不超过 <em>合并间距</em> 的微小碎片会被桥接合并；合并后仍小于 <em>最小碎片面积</em> 的碎片会被丢弃。",
+    "s2.whatMean": "这些参数是什么意思？",
+    "s2.explain": "<strong>外侧</strong>：将 Alpha 形状沿外侧扩张所设线宽，切割线落在印刷图案之外。<br><strong>内侧</strong>：将 Alpha 形状沿内侧收缩，切割线落在印刷图案之内。<br><strong>居中</strong>：切割线正好沿 Alpha 边缘（不使用线宽偏移）。<br><strong>像素精确</strong>：输出原始的阶梯状边界；<strong>抗锯齿</strong>则简化为平滑折线。<br><strong>合并间距</strong>：在该距离内闭合缝隙——靠近较大碎片的小碎片会被融合进去。设为 0 表示关闭。<br><strong>最小碎片面积</strong>：移除剩余面积低于该阈值的碎片。设为 0 表示关闭。",
+    "s2.continue": "继续 → 板材与套料",
+    "s2.computingPreviews": "正在计算边框预览…",
+    "s2.recomputing": "正在重新计算边框…",
+    "s2.computing": "正在计算边框…",
+    "s2.pathInfo": "{name} · {paths} 条路径 · {pts} 点",
+
+    "s3.heading": "板材与套料",
+    "s3.hint": "为每张图设置尺寸、数量与拆分策略，然后配置板材并运行套料算法。",
+    "s3.perImage": "逐图设置",
+    "s3.perImageHint": "每张卡片设置渲染后的 <strong>毫米尺寸</strong>、整图的 <strong>数量</strong>，以及如何将其图层 <strong>拆分为碎片</strong> 以便更紧凑地套料。",
+    "s3.defaultSplit": "默认拆分策略",
+    "s3.split0": "关闭 · 保持每个图层为整体",
+    "s3.split1": "1 · 智能拆分（分离独立块；保留孔洞）",
+    "s3.split2": "2 · 激进（每个封闭形状独立）",
+    "s3.split3": "3 · 仅外轮廓（分离独立块；丢弃孔洞）",
+    "s3.applyAll": "应用默认值到所有图像",
+    "s3.openCard": "展开卡片可逐图覆盖并预览碎片。",
+    "s3.sheet": "板材",
+    "s3.sheetHint": "每张切割板 <strong>仅包含一个图层</strong>，按其数量（或拆分后的碎片数）重复排列。若一张板放不下，系统会自动溢出到第 2、3、… 张板。",
+    "s3.sheetW": "板材宽度 (mm)",
+    "s3.sheetH": "板材高度 (mm)",
+    "s3.edgeMargin": "边缘留白 (mm)",
+    "s3.partGap": "件间间距 (mm)",
+    "s3.rotation": "旋转方式",
+    "s3.rotFree": "自由（最佳拟合）",
+    "s3.rot90": "90° 增量",
+    "s3.rot0": "不旋转",
+    "s3.notice": "⏱ <strong>提示：</strong>套料计算量较大。更高的数量、自由旋转以及激进拆分都会增加运行时间——可能从几秒到一分钟以上。运行前请先确认尺寸、数量和拆分预览是否符合预期。",
+    "s3.runNest": "运行套料",
+    "s3.continue": "继续 → 导出",
+    "s3.nestingOverlay": "正在套料…可能需要稍等。",
+    "s3.nesting": "正在套料…",
+    "s3.nestProgress": "正在套料… 完成 {done}/{total} · 进行中 {running}/{workers} 工作线程 · {names}",
+    "s3.nestDone": "完成 — 共 {n} 张板 · 用时 {ms} ms。",
+    "s3.benchHeader": "性能基准 — 实际 {wall} ms · 串行估算 {seq} ms · 加速比 {speedup}× · {workers} 个工作线程 · {layers} 个图层",
+    "s3.benchBreakdown": "其中（按工作线程汇总）：栅格化 {raster} ms · 位图打包 {pack} ms · 套料放置 {place} ms",
+    "s3.benchColumns": "图层                              碎片  数量  已放置  板数    用时",
+    "s3.benchRow": "{name}  {pieces}  {qty}  {placed}  {sheets}  {ms} ms",
+    "s3.size": "尺寸 (mm)",
+    "s3.qty": "数量",
+    "s3.splitStrategy": "拆分策略",
+    "s3.cardSplit0": "关闭 · 保持每个图层为整体",
+    "s3.cardSplit1": "1 · 智能（独立块；保留孔洞）",
+    "s3.cardSplit2": "2 · 激进（每个封闭形状）",
+    "s3.cardSplit3": "3 · 仅外轮廓（丢弃孔洞）",
+    "s3.pieceHint": "下方每个彩色区域都是套料时独立放置的一片碎片。碎片越多，套料越紧凑，但需评估的方案也越多。",
+    "s3.layerPieces": "图层 {idx} · {n} 片",
+    "s3.summary": "{nLayers} 个图层 · 尺寸 {size} mm · 数量 {qty} · 拆分：{split} · 共 {pieces} 片待套料",
+    "s3.splitLabel0": "关闭（整层）",
+    "s3.splitLabel1": "智能（独立块+孔洞）",
+    "s3.splitLabel2": "每个形状独立",
+    "s3.splitLabel3": "仅外轮廓",
+    "s3.empty": "空板",
+    "s3.placed": "已放置 {n} 件",
+    "s3.sheetCaption": "{name} · 板 {i}/{total}{splitNote}",
+    "s3.splitNote": " · {pieces} 片 × {copies}",
+    "s3.warnTitle": "⚠ {name}：仅放置了 {placed}/{requested} 件。",
+    "s3.warnHint": "请加大板材尺寸、减少数量、降低边框线宽，或放宽旋转限制。",
+
+    "s4.heading": "导出",
+    "s4.hint": "选择需要的格式。所有文件会打包为单个 .zip 下载——每个（图层，板材，格式）组合对应一个文件。",
+    "s4.formats": "格式",
+    "s4.aiLabel": "AI",
+    "s4.aiPill": "Illustrator",
+    "s4.dxfLabel": "DXF",
+    "s4.dxfPill": "CAD",
+    "s4.pltLabel": "PLT",
+    "s4.pltPill": "HPGL",
+    "s4.svgLabel": "SVG",
+    "s4.svgPill": "预览",
+    "s4.download": "下载 .zip",
+    "s4.nestFirst": "请先完成套料。",
+    "s4.pickFormat": "请至少选择一种格式。",
+    "s4.building": "正在生成文件…",
+    "s4.nothing": "没有可导出的内容。",
+    "s4.saved": "已将 {n} 个文件保存到 zip。",
+  },
+  en: {
+    "doc.title": "img2vector — PNG layers → laser-cut vector",
+    "header.tagline": "· PNG layers → laser-cut vector",
+    "nav.step1": "1 · Upload",
+    "nav.step2": "2 · Border",
+    "nav.step3": "3 · Sheet & nesting",
+    "nav.step4": "4 · Export",
+    "common.back": "← Back",
+    "overlay.working": "Working…",
+
+    "s1.heading": "Drop your PNG layers",
+    "s1.hint": "Each PNG should be a transparent layer. Filenames must end with <code>_&lt;number&gt;.png</code> — e.g. <code>mushroom_1.png</code>, <code>red_apple_02.png</code>. Layers are grouped by everything before the last underscore.",
+    "s1.dropTitle": "Drop PNGs here",
+    "s1.or": "or",
+    "s1.choose": "Choose files…",
+    "s1.continue": "Continue → Border",
+    "s1.loading": "Loading {n} file(s)…",
+    "s1.summary": "{layers} layer(s) across {groups} image(s).",
+    "s1.layerInfo": "{n} layer(s) · {w}×{h} px",
+
+    "s2.heading": "Border options",
+    "s2.hint": "The border is the laser cut path traced from each layer's alpha edge.",
+    "s2.weight": "Weight (mm)",
+    "s2.position": "Position",
+    "s2.posOuter": "Outer (grow shape)",
+    "s2.posInner": "Inner (shrink shape)",
+    "s2.posHalf": "Half / centered",
+    "s2.edges": "Edges",
+    "s2.edgeAA": "Anti-aliased (smooth)",
+    "s2.edgePx": "Pixel-perfect (stair-step)",
+    "s2.workRes": "Working res. (px / longest side)",
+    "s2.recompute": "Recompute previews",
+    "s2.mergeGap": "Merge gap (mm)",
+    "s2.minPiece": "Min piece size (mm²)",
+    "s2.mergeHint": "Tiny pieces within <em>merge gap</em> of another piece get bridged into it; pieces still smaller than <em>min piece size</em> get dropped.",
+    "s2.whatMean": "What do these mean?",
+    "s2.explain": "<strong>Outer</strong> grows the alpha shape outward by the weight, so the cut sits outside the printed art.<br><strong>Inner</strong> shrinks the alpha shape inward, so the cut sits inside the printed art.<br><strong>Half / centered</strong> keeps the cut on the alpha edge itself (weight is ignored for offset).<br><strong>Pixel-perfect</strong> emits the raw stair-stepped boundary; <strong>anti-aliased</strong> simplifies it to a smooth polyline.<br><strong>Merge gap</strong> closes gaps up to that distance — small detached pieces close to a larger piece get fused into it. Set to 0 to disable.<br><strong>Min piece size</strong> removes any remaining piece whose area is below this threshold. Set to 0 to disable.",
+    "s2.continue": "Continue → Sheet & nesting",
+    "s2.computingPreviews": "Computing border previews…",
+    "s2.recomputing": "Recomputing borders…",
+    "s2.computing": "Computing borders…",
+    "s2.pathInfo": "{name} · {paths} path(s) · {pts} pts",
+
+    "s3.heading": "Sheet & nesting",
+    "s3.hint": "Set the size, quantity and split strategy for each image, then configure the sheet and run the nesting algorithm.",
+    "s3.perImage": "Per-image setup",
+    "s3.perImageHint": "Each card sets the rendered <strong>size in mm</strong>, the <strong>quantity</strong> of full images, and how its layers should be <strong>split into pieces</strong> for tighter nesting.",
+    "s3.defaultSplit": "Default split strategy",
+    "s3.split0": "Off · keep each layer whole",
+    "s3.split1": "1 · Smart split (separate islands; keep holes)",
+    "s3.split2": "2 · Aggressive (every closed shape on its own)",
+    "s3.split3": "3 · Outer-only (separate islands; drop holes)",
+    "s3.applyAll": "Apply default to all images",
+    "s3.openCard": "Open a card to override per image & preview pieces.",
+    "s3.sheet": "Sheet",
+    "s3.sheetHint": "Each cut sheet contains <strong>one layer only</strong>, repeated to match its quantity (or its split pieces). If a sheet can't hold every copy, the system spills onto sheet 2, 3, …",
+    "s3.sheetW": "Sheet width (mm)",
+    "s3.sheetH": "Sheet height (mm)",
+    "s3.edgeMargin": "Edge margin (mm)",
+    "s3.partGap": "Part-to-part gap (mm)",
+    "s3.rotation": "Rotation",
+    "s3.rotFree": "Free (best fit)",
+    "s3.rot90": "90° increments",
+    "s3.rot0": "No rotation",
+    "s3.notice": "⏱ <strong>Heads up:</strong> nesting is computationally heavy. Higher quantities, free rotation, and aggressive splitting all increase runtime — expect anywhere from a few seconds to a minute or more. Make sure your size, quantity, and split previews look right before running.",
+    "s3.runNest": "Nest layouts",
+    "s3.continue": "Continue → Export",
+    "s3.nestingOverlay": "Nesting layouts… this may take a moment.",
+    "s3.nesting": "Nesting…",
+    "s3.nestProgress": "Nesting… {done}/{total} done · {running}/{workers} worker(s) running · {names}",
+    "s3.nestDone": "Done — {n} sheet(s) total · {ms} ms.",
+    "s3.benchHeader": "Benchmark — wall {wall} ms · sequential {seq} ms · speedup {speedup}× · {workers} worker(s) · {layers} layer(s)",
+    "s3.benchBreakdown": "Breakdown (summed across workers): rasterize {raster} ms · pack {pack} ms · place {place} ms",
+    "s3.benchColumns": "layer                             pieces   qty   placed  sheets    time",
+    "s3.benchRow": "{name}  {pieces}  {qty}  {placed}  {sheets}  {ms} ms",
+    "s3.size": "Size (mm)",
+    "s3.qty": "Quantity",
+    "s3.splitStrategy": "Split strategy",
+    "s3.cardSplit0": "Off · keep each layer whole",
+    "s3.cardSplit1": "1 · Smart (islands; keep holes)",
+    "s3.cardSplit2": "2 · Aggressive (every closed shape)",
+    "s3.cardSplit3": "3 · Outer-only (drop holes)",
+    "s3.pieceHint": "Each colored region below is a piece that will be placed independently during nesting. More pieces = tighter possible packing but more variants to evaluate.",
+    "s3.layerPieces": "layer {idx} · {n} piece(s)",
+    "s3.summary": "{nLayers} layer(s) · size {size} mm · qty {qty} · split: {split} · {pieces} piece(s) to nest",
+    "s3.splitLabel0": "off (whole layer)",
+    "s3.splitLabel1": "smart (islands+holes)",
+    "s3.splitLabel2": "every shape",
+    "s3.splitLabel3": "outer-only",
+    "s3.empty": "empty",
+    "s3.placed": "{n} placed",
+    "s3.sheetCaption": "{name} · sheet {i}/{total}{splitNote}",
+    "s3.splitNote": " · {pieces} pieces × {copies}",
+    "s3.warnTitle": "⚠ {name}: only {placed}/{requested} pieces placed.",
+    "s3.warnHint": "Increase sheet size, decrease quantity, decrease border weight, or relax rotation.",
+
+    "s4.heading": "Export",
+    "s4.hint": "Pick the formats you need. Files are bundled into a single .zip download — one file per (layer, sheet, format).",
+    "s4.formats": "Formats",
+    "s4.aiLabel": "AI",
+    "s4.aiPill": "Illustrator",
+    "s4.dxfLabel": "DXF",
+    "s4.dxfPill": "CAD",
+    "s4.pltLabel": "PLT",
+    "s4.pltPill": "HPGL",
+    "s4.svgLabel": "SVG",
+    "s4.svgPill": "preview",
+    "s4.download": "Download .zip",
+    "s4.nestFirst": "Nest layouts first.",
+    "s4.pickFormat": "Pick at least one format.",
+    "s4.building": "Building files…",
+    "s4.nothing": "Nothing to export.",
+    "s4.saved": "Saved {n} file(s) in zip.",
+  },
+};
+let LANG = (function(){
+  try { return localStorage.getItem("img2vector_lang") || "zh"; } catch(e){ return "zh"; }
+})();
+function t(key, params){
+  let s = (I18N[LANG] && I18N[LANG][key]) ?? (I18N.en[key] ?? key);
+  if(params){
+    for(const k of Object.keys(params)){
+      s = s.split("{"+k+"}").join(String(params[k]));
+    }
+  }
+  return s;
+}
+window._rerenderI18nHooks = [];
+const _I18N_ENTITIES = { "amp":"&", "lt":"<", "gt":">", "quot":"\"", "#39":"'" };
+function _decodeEntities(s){
+  return s.replace(/&(amp|lt|gt|quot|#39);/g, (_, e)=> _I18N_ENTITIES[e] ?? "");
+}
+/* Render a small whitelist of inline tags (<strong>, <em>, <code>, <br>) into
+   a target node without using innerHTML. Strings come from our static dict. */
+function setI18nMarkup(node, str){
+  while(node.firstChild) node.removeChild(node.firstChild);
+  const stack = [node];
+  const matches = [...str.matchAll(/<(\/)?(strong|em|code|br)\s*\/?>/gi)];
+  let last = 0;
+  for(const m of matches){
+    if(m.index > last){
+      stack[stack.length-1].appendChild(
+        document.createTextNode(_decodeEntities(str.slice(last, m.index)))
+      );
+    }
+    last = m.index + m[0].length;
+    const closing = !!m[1];
+    const tag = m[2].toLowerCase();
+    if(tag === "br"){
+      stack[stack.length-1].appendChild(document.createElement("br"));
+    } else if(closing){
+      if(stack.length > 1) stack.pop();
+    } else {
+      const child = document.createElement(tag);
+      stack[stack.length-1].appendChild(child);
+      stack.push(child);
+    }
+  }
+  if(last < str.length){
+    stack[stack.length-1].appendChild(
+      document.createTextNode(_decodeEntities(str.slice(last)))
+    );
+  }
+}
+function setI18nText(n, text){
+  // If the node has element children (e.g. a <label> containing an <input>),
+  // update only its leading text node and preserve those children.
+  let firstText = null, firstElem = null;
+  for(const c of n.childNodes){
+    if(c.nodeType === 3 && firstText === null) firstText = c;
+    if(c.nodeType === 1){ firstElem = c; break; }
+  }
+  if(firstElem && firstText){
+    firstText.nodeValue = text;
+  } else if(firstElem && !firstText){
+    n.insertBefore(document.createTextNode(text), firstElem);
+  } else {
+    n.textContent = text;
+  }
+}
+function applyI18n(){
+  document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
+  document.querySelectorAll("[data-i18n]").forEach(n=>{
+    if(n.tagName === "TITLE"){ document.title = t(n.dataset.i18n); }
+    else { setI18nText(n, t(n.dataset.i18n)); }
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach(n=>{
+    setI18nMarkup(n, t(n.dataset.i18nHtml));
+  });
+  for(const fn of window._rerenderI18nHooks){ try{ fn(); }catch(e){ console.warn(e); } }
+}
+function setLang(l){
+  if(!I18N[l]) return;
+  LANG = l;
+  try { localStorage.setItem("img2vector_lang", l); } catch(e){}
+  document.querySelectorAll("#langSwitch button").forEach(b=>{
+    b.classList.toggle("active", b.dataset.lang === l);
+  });
+  applyI18n();
+}
+
+/* ---------- DOM helper (no innerHTML) ---------- */
+function el(tag, attrs, ...kids){
+  const ns = (tag==="svg"||tag==="path"||tag==="rect"||tag==="g"||tag==="line") ? "http://www.w3.org/2000/svg" : null;
+  const n = ns ? document.createElementNS(ns, tag) : document.createElement(tag);
+  if(attrs){
+    for(const k of Object.keys(attrs)){
+      const v = attrs[k];
+      if(v==null||v===false) continue;
+      if(k==="class") n.className = v;
+      else if(k==="text") n.textContent = v;
+      else if(k.startsWith("on")) n.addEventListener(k.slice(2), v);
+      else if(ns) n.setAttribute(k, v);
+      else if(k in n) n[k] = v;
+      else n.setAttribute(k, v);
+    }
+  }
+  for(const k of kids){
+    if(k==null||k===false) continue;
+    if(typeof k==="string"||typeof k==="number") n.appendChild(document.createTextNode(String(k)));
+    else n.appendChild(k);
+  }
+  return n;
+}
+function clear(node){ while(node.firstChild) node.removeChild(node.firstChild); }
+
+/* ---------- Magnify-on-hover (Amazon-style zoom) ----------
+   The small SVG/canvas is wrapped in a .magnify-frame that becomes the
+   shared positioning context for both the lens and the pane. CSS handles
+   sizing — pane uses left:100%; width:100%; height:100% so it sits next
+   to the source at the exact same dimensions (no pixel arithmetic). JS
+   only converts cursor position into lens position and pans the large
+   preview inside the pane. */
+function attachMagnify(host, buildLargeNode){
+  if(!host || host.dataset._magnifyAttached) return;
+  const small = host.querySelector("svg, canvas");
+  if(!small) return;
+  host.dataset._magnifyAttached = "1";
+  host.classList.add("magnify");
+  // Wrap the small element so lens and pane can be its siblings.
+  const frame = document.createElement("div");
+  frame.className = "magnify-frame";
+  small.parentNode.insertBefore(frame, small);
+  frame.appendChild(small);
+
+  let lens=null, pane=null, large=null, raf=null;
+  function onEnter(){
+    if(lens) return;
+    const fRect = frame.getBoundingClientRect();
+    if(fRect.width < 24 || fRect.height < 24) return;
+    large = buildLargeNode();
+    if(!large) return;
+    lens = document.createElement("div"); lens.className = "magnify-lens";
+    pane = document.createElement("div"); pane.className = "magnify-pane";
+    pane.appendChild(large);
+    frame.appendChild(lens);
+    frame.appendChild(pane);
+    lens.style.display = "block"; pane.style.display = "block";
+  }
+  function onMove(e){
+    if(!lens || !pane || !large) return;
+    if(raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(()=>{
+      const fRect = frame.getBoundingClientRect();
+      // Natural size of the high-resolution preview built by the caller.
+      let lw, lh;
+      if(large.tagName === "CANVAS"){ lw = large.width; lh = large.height; }
+      else {
+        lw = parseFloat(large.getAttribute("width"))  || fRect.width;
+        lh = parseFloat(large.getAttribute("height")) || fRect.height;
+      }
+      // Pane is the same size as the frame (via CSS). Magnification is the
+      // ratio of the large preview's natural pixels to the pane pixels.
+      const zoom = Math.max(lw / fRect.width, lh / fRect.height, 1);
+      // Lens covers exactly the source region that the pane shows.
+      const lensW = fRect.width / zoom;
+      const lensH = fRect.height / zoom;
+      // Cursor in frame-local coords, clamped so lens stays inside the source.
+      const cx = Math.min(Math.max(e.clientX - fRect.left, lensW/2), fRect.width  - lensW/2);
+      const cy = Math.min(Math.max(e.clientY - fRect.top,  lensH/2), fRect.height - lensH/2);
+      lens.style.width  = `${lensW}px`;
+      lens.style.height = `${lensH}px`;
+      lens.style.left   = `${cx - lensW/2}px`;
+      lens.style.top    = `${cy - lensH/2}px`;
+      // Render the large preview at 1:1 inside the pane and translate it so
+      // (cx, cy) in source maps to the pane's center.
+      large.style.width  = `${lw}px`;
+      large.style.height = `${lh}px`;
+      large.style.transform = `translate(${fRect.width/2  - cx*zoom}px, ${fRect.height/2 - cy*zoom}px)`;
+    });
+  }
+  function onLeave(){
+    if(raf){ cancelAnimationFrame(raf); raf=null; }
+    if(lens){ lens.remove(); lens=null; }
+    if(pane){ pane.remove(); pane=null; }
+    large = null;
+  }
+  host.addEventListener("mouseenter", onEnter);
+  host.addEventListener("mousemove", onMove);
+  host.addEventListener("mouseleave", onLeave);
+}
+
+/* ---------- App state ---------- */
+const APP = {
+  files: [],
+  groups: {},
+  border: { weightMm:0.01, mode:"half", trace:"px", workRes:5000, mergeGapMm:0.01, minPieceMm2:0.01 },
+  layerCache: {},
+  borderCache: {},
+  splitCache: {},
+  sheet: { w:200, h:240, edge:3, gap:2, rot:"free" },
+  defaultSplit: 0, // 0=off, 1=smart, 2=every-poly, 3=outer-only
+  nestResult: null,
+  formats: new Set(["ai","dxf","plt"]),
+};
+
+/* ---------- Loading helpers ---------- */
+function setBtnLoading(btn, loading, savedText){
+  if(!btn) return;
+  if(loading){
+    btn.dataset._wasDisabled = btn.disabled ? "1" : "";
+    btn.disabled = true;
+    btn.classList.add("loading");
+  } else {
+    btn.classList.remove("loading");
+    btn.disabled = btn.dataset._wasDisabled === "1";
+    delete btn.dataset._wasDisabled;
+  }
+}
+/* Scope a long-running task to the panel that triggered it. Adds .busy to the
+   nearest enclosing .panel so its inputs/buttons are visually disabled while the
+   work runs — but live status text, progress bars, and previews stay visible. */
+function _findPanel(node){
+  while(node && node !== document.body){
+    if(node.classList && node.classList.contains("panel")) return node;
+    node = node.parentNode;
+  }
+  return null;
+}
+async function runScoped(scope, fn){
+  const panels = [];
+  if(scope){
+    const list = Array.isArray(scope) ? scope : [scope];
+    for(const s of list){
+      const p = (s && s.classList && s.classList.contains("panel")) ? s : _findPanel(s);
+      if(p && !p.classList.contains("busy")){ p.classList.add("busy"); panels.push(p); }
+    }
+  }
+  // double-rAF so the busy state paints before any sync work blocks
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  try { return await fn(); }
+  finally { for(const p of panels) p.classList.remove("busy"); }
+}
+
+/* ---------- Step nav ---------- */
+const stepNavBtns = document.querySelectorAll("#stepsNav button");
+function gotoStep(n){
+  document.querySelectorAll("section.step").forEach(s=>s.classList.toggle("active", +s.dataset.step===n));
+  stepNavBtns.forEach(b=>b.classList.toggle("active", +b.dataset.go===n));
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function setStepEnabled(n, enabled){
+  const b = document.querySelector(`#stepsNav button[data-go="${n}"]`);
+  if(b) b.disabled = !enabled;
+}
+function setStepDone(n, done){
+  const b = document.querySelector(`#stepsNav button[data-go="${n}"]`);
+  if(b) b.classList.toggle("done", done);
+}
+document.querySelectorAll("[data-go]").forEach(elem=>{
+  elem.addEventListener("click", ()=>{
+    const n = +elem.dataset.go;
+    if(elem.disabled) return;
+    gotoStep(n);
+  });
+});
+
+/* ---------- Step 1: ingest ---------- */
+const drop = document.getElementById("drop");
+const fileInput = document.getElementById("fileInput");
+const pickBtn = document.getElementById("pickBtn");
+const ingestStatus = document.getElementById("ingestStatus");
+const groupList = document.getElementById("groupList");
+const toStep2Btn = document.getElementById("toStep2");
+
+pickBtn.addEventListener("click", ()=>fileInput.click());
+fileInput.addEventListener("change", e=>handleFiles([...e.target.files]));
+["dragenter","dragover"].forEach(t=>drop.addEventListener(t, e=>{e.preventDefault();drop.classList.add("over");}));
+["dragleave","drop"].forEach(t=>drop.addEventListener(t, e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop", e=>{ const fs=[...(e.dataTransfer.files||[])].filter(f=>/\.png$/i.test(f.name)); handleFiles(fs); });
+
+function parseName(name){
+  const s = name.replace(/\.png$/i, "");
+  const m = s.match(/^(.+)_(\d+)$/);
+  return m ? { parent: m[1], idx: parseInt(m[2],10) } : null;
+}
+
+let _ingesting = false;
+async function handleFiles(fileList){
+  if(!fileList.length || _ingesting) return;
+  _ingesting = true;
+  pickBtn.classList.add("loading");
+  pickBtn.disabled = true;
+  drop.classList.add("loading-state");
+  ingestStatus.textContent = "";
+  ingestStatus.appendChild(el("span", { class:"spinner" }));
+  ingestStatus.appendChild(document.createTextNode(t("s1.loading", { n: fileList.length })));
+  try {
+    const newFiles = [];
+    for(const f of fileList){
+      const parsed = parseName(f.name);
+      if(!parsed){ console.warn("skip (no _N suffix):", f.name); continue; }
+      try{
+        const img = await loadImage(f);
+        newFiles.push({ name:f.name, parent:parsed.parent, idx:parsed.idx, img, w:img.naturalWidth, h:img.naturalHeight });
+      }catch(err){ console.error("decode failed:", f.name, err); }
+    }
+    const existing = new Set(APP.files.map(x=>x.name));
+    for(const nf of newFiles) if(!existing.has(nf.name)) APP.files.push(nf);
+    rebuildGroups();
+    renderGroupList();
+    ingestStatus.textContent = t("s1.summary", { layers: APP.files.length, groups: Object.keys(APP.groups).length });
+    toStep2Btn.disabled = !Object.keys(APP.groups).length;
+    setStepEnabled(2, !!Object.keys(APP.groups).length);
+  } finally {
+    _ingesting = false;
+    pickBtn.classList.remove("loading");
+    pickBtn.disabled = false;
+  }
+}
+
+function loadImage(file){
+  return new Promise((res, rej)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>res(img);
+    img.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error("decode failed")); };
+    img.src = url;
+  });
+}
+
+function rebuildGroups(){
+  const groups = {};
+  for(const f of APP.files){
+    if(!groups[f.parent]) groups[f.parent] = { name:f.parent, layers:[], sizeMm:30, qty:1, splitMode: APP.defaultSplit };
+    groups[f.parent].layers.push(f);
+  }
+  for(const k of Object.keys(groups)){
+    groups[k].layers.sort((a,b)=>a.idx-b.idx);
+    if(APP.groups[k]){
+      groups[k].sizeMm = APP.groups[k].sizeMm;
+      groups[k].qty = APP.groups[k].qty;
+      groups[k].splitMode = APP.groups[k].splitMode ?? APP.defaultSplit;
+    }
+    groups[k].canvasW = groups[k].layers[0].w;
+    groups[k].canvasH = groups[k].layers[0].h;
+    groups[k].unionBBox = computeUnionBBox(groups[k]);
+  }
+  APP.groups = groups;
+}
+
+function computeUnionBBox(group){
+  const layers = group.layers;
+  const w = layers[0].w, h = layers[0].h;
+  const target = 400;
+  const scale = Math.min(1, target / Math.max(w,h));
+  const sw = Math.max(1, Math.round(w*scale)), sh = Math.max(1, Math.round(h*scale));
+  const can = document.createElement("canvas"); can.width=sw; can.height=sh;
+  const ctx = can.getContext("2d");
+  for(const L of layers) ctx.drawImage(L.img, 0, 0, sw, sh);
+  const id = ctx.getImageData(0,0,sw,sh).data;
+  let x0=sw,y0=sh,x1=-1,y1=-1;
+  for(let y=0;y<sh;y++) for(let x=0;x<sw;x++){
+    if(id[(y*sw+x)*4+3]>16){
+      if(x<x0)x0=x; if(y<y0)y0=y;
+      if(x>x1)x1=x; if(y>y1)y1=y;
+    }
+  }
+  if(x1<0) return { x0:0,y0:0,x1:w,y1:h, side:Math.max(w,h) };
+  x0/=scale; y0/=scale; x1/=scale; y1/=scale;
+  const cx=(x0+x1)/2, cy=(y0+y1)/2, side=Math.max(x1-x0, y1-y0);
+  return { x0:cx-side/2, y0:cy-side/2, x1:cx+side/2, y1:cy+side/2, side };
+}
+
+function makeLayerThumb(group, size, drawBBox){
+  const c = document.createElement("canvas"); c.width=size; c.height=size;
+  const ctx = c.getContext("2d");
+  const s = Math.min(size/group.canvasW, size/group.canvasH);
+  const dw = group.canvasW*s, dh = group.canvasH*s, ox=(size-dw)/2, oy=(size-dh)/2;
+  for(const L of group.layers) ctx.drawImage(L.img, ox, oy, dw, dh);
+  if(drawBBox && group.unionBBox){
+    ctx.strokeStyle="rgba(122,162,255,.85)"; ctx.lineWidth=1.5;
+    ctx.strokeRect(ox + group.unionBBox.x0*s, oy + group.unionBBox.y0*s, group.unionBBox.side*s, group.unionBBox.side*s);
+  }
+  return c;
+}
+
+function renderGroupList(){
+  clear(groupList);
+  const names = Object.keys(APP.groups).sort();
+  if(!names.length) return;
+  for(const n of names){
+    const g = APP.groups[n];
+    const thumb = el("div", { class:"thumb" }, makeLayerThumb(g, 80, false));
+    attachMagnify(thumb, ()=>makeLayerThumb(g, 600, false));
+    const card = el("div", { class:"group-card" },
+      thumb,
+      el("div", { class:"meta" },
+        el("strong", { text: n }),
+        el("span", { class:"layers", text: t("s1.layerInfo", { n: g.layers.length, w: g.canvasW, h: g.canvasH }) }),
+      ),
+    );
+    groupList.appendChild(card);
+  }
+}
+
+document.getElementById("toStep2").addEventListener("click", async ()=>{
+  if(!Object.keys(APP.groups).length) return;
+  setStepEnabled(2, true); setStepDone(1, true);
+  gotoStep(2);
+  // Inline loading tile inside borderPreview already conveys progress; no global overlay needed.
+  await recomputeAllBorders();
+});
+
+/* ---------- Step 2: borders ---------- */
+const borderWeightI = document.getElementById("borderWeight");
+const borderModeI = document.getElementById("borderMode");
+const traceModeI = document.getElementById("traceMode");
+const workResI = document.getElementById("workRes");
+const mergeGapI = document.getElementById("mergeGap");
+const minPieceI = document.getElementById("minPiece");
+const borderPreview = document.getElementById("borderPreview");
+
+const _recomputeBordersWrapped = (e)=> {
+  // Lock the inputs in the same panel as the changed control so the user can't
+  // queue multiple recomputes; live progress shows inside borderPreview.
+  const panel = _findPanel(e && e.target);
+  return runScoped(panel, ()=> recomputeAllBorders());
+};
+[borderWeightI, borderModeI, traceModeI, workResI, mergeGapI, minPieceI].forEach(elem=>elem.addEventListener("change", _recomputeBordersWrapped));
+document.getElementById("recomputeBorders").addEventListener("click", ()=>{
+  const b = document.getElementById("recomputeBorders");
+  setBtnLoading(b, true);
+  recomputeAllBorders().finally(()=>setBtnLoading(b, false));
+});
+
+function getLayerAlpha(group, layerIdx, workRes){
+  const key = `${group.name}:${layerIdx}:${workRes}`;
+  if(APP.layerCache[key]) return APP.layerCache[key];
+  const L = group.layers.find(l=>l.idx===layerIdx);
+  const W = group.canvasW, H = group.canvasH;
+  const longest = Math.max(W,H);
+  const scale = Math.min(1, workRes/longest);
+  const w = Math.max(1, Math.round(W*scale));
+  const h = Math.max(1, Math.round(H*scale));
+  const c = document.createElement("canvas"); c.width=w; c.height=h;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(L.img, 0, 0, w, h);
+  const id = ctx.getImageData(0,0,w,h).data;
+  const m = new Uint8Array(w*h);
+  for(let i=0,p=0;i<m.length;i++,p+=4) m[i] = id[p+3] > 32 ? 1 : 0;
+  const mmPerWorkPx = (group.sizeMm / group.unionBBox.side) / scale;
+  const out = { mask:m, w, h, scale, pxPerMm:1/mmPerWorkPx, mmPerWorkPx };
+  APP.layerCache[key] = out;
+  return out;
+}
+
+const _diskCache = {};
+function diskOffsets(r){
+  if(_diskCache[r]) return _diskCache[r];
+  const arr = []; const r2 = r*r;
+  for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++) if(dx*dx+dy*dy<=r2) arr.push(dx,dy);
+  return _diskCache[r] = new Int16Array(arr);
+}
+function dilate(mask, w, h, r){
+  if(r<=0) return new Uint8Array(mask);
+  const out = new Uint8Array(w*h);
+  const offs = diskOffsets(r);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    if(!mask[y*w+x]) continue;
+    for(let k=0;k<offs.length;k+=2){
+      const nx=x+offs[k], ny=y+offs[k+1];
+      if(nx>=0&&nx<w&&ny>=0&&ny<h) out[ny*w+nx]=1;
+    }
+  }
+  return out;
+}
+function erode(mask, w, h, r){
+  if(r<=0) return new Uint8Array(mask);
+  const inv = new Uint8Array(w*h);
+  for(let i=0;i<mask.length;i++) inv[i] = mask[i] ? 0 : 1;
+  const dil = dilate(inv, w, h, r);
+  const out = new Uint8Array(w*h);
+  for(let i=0;i<dil.length;i++) out[i] = dil[i] ? 0 : 1;
+  return out;
+}
+
+function labelComponents(mask, w, h){
+  const labels = new Int32Array(w*h);
+  let next = 0;
+  const sizes = [0];
+  const stack = [];
+  for(let i=0;i<w*h;i++){
+    if(!mask[i] || labels[i]) continue;
+    next++;
+    let count = 0;
+    stack.push(i);
+    labels[i] = next;
+    while(stack.length){
+      const idx = stack.pop();
+      count++;
+      const x = idx % w, y = (idx - x) / w;
+      if(x>0   && mask[idx-1] && !labels[idx-1]){ labels[idx-1]=next; stack.push(idx-1); }
+      if(x<w-1 && mask[idx+1] && !labels[idx+1]){ labels[idx+1]=next; stack.push(idx+1); }
+      if(y>0   && mask[idx-w] && !labels[idx-w]){ labels[idx-w]=next; stack.push(idx-w); }
+      if(y<h-1 && mask[idx+w] && !labels[idx+w]){ labels[idx+w]=next; stack.push(idx+w); }
+    }
+    sizes.push(count);
+  }
+  return { labels, sizes, count: next };
+}
+
+function cleanupMask(mask, w, h, closeRadiusPx, minAreaPx){
+  let m = mask;
+  if(closeRadiusPx > 0){
+    m = erode(dilate(m, w, h, closeRadiusPx), w, h, closeRadiusPx);
+  }
+  if(minAreaPx > 0){
+    const { labels, sizes, count } = labelComponents(m, w, h);
+    if(count > 0){
+      const keep = new Uint8Array(count + 1);
+      for(let i=1;i<=count;i++) if(sizes[i] >= minAreaPx) keep[i] = 1;
+      const out = new Uint8Array(w*h);
+      for(let i=0;i<w*h;i++) if(m[i] && keep[labels[i]]) out[i] = 1;
+      m = out;
+    }
+  }
+  return m;
+}
+
+function tracePolygons(mask, w, h){
+  const segs = [];
+  const key = (x,y)=>`${x.toFixed(3)}_${y.toFixed(3)}`;
+  function add(x1,y1,x2,y2){ segs.push([x1,y1,x2,y2]); }
+  for(let y=0;y<h-1;y++) for(let x=0;x<w-1;x++){
+    const tl=mask[y*w+x], tr=mask[y*w+x+1], bl=mask[(y+1)*w+x], br=mask[(y+1)*w+x+1];
+    const c = (tl?8:0)|(tr?4:0)|(br?2:0)|(bl?1:0);
+    const T=[x+0.5,y], R=[x+1,y+0.5], B=[x+0.5,y+1], L=[x,y+0.5];
+    switch(c){
+      case 0: case 15: break;
+      case 1: add(L[0],L[1],B[0],B[1]); break;
+      case 2: add(B[0],B[1],R[0],R[1]); break;
+      case 3: add(L[0],L[1],R[0],R[1]); break;
+      case 4: add(T[0],T[1],R[0],R[1]); break;
+      case 5: add(L[0],L[1],T[0],T[1]); add(B[0],B[1],R[0],R[1]); break;
+      case 6: add(T[0],T[1],B[0],B[1]); break;
+      case 7: add(L[0],L[1],T[0],T[1]); break;
+      case 8: add(T[0],T[1],L[0],L[1]); break;
+      case 9: add(T[0],T[1],B[0],B[1]); break;
+      case 10: add(T[0],T[1],R[0],R[1]); add(L[0],L[1],B[0],B[1]); break;
+      case 11: add(T[0],T[1],R[0],R[1]); break;
+      case 12: add(L[0],L[1],R[0],R[1]); break;
+      case 13: add(B[0],B[1],R[0],R[1]); break;
+      case 14: add(L[0],L[1],B[0],B[1]); break;
+    }
+  }
+  const map = new Map();
+  for(let i=0;i<segs.length;i++){
+    const s = segs[i];
+    const k1 = key(s[0],s[1]), k2 = key(s[2],s[3]);
+    (map.get(k1)||map.set(k1,[]).get(k1)).push({i, end:0});
+    (map.get(k2)||map.set(k2,[]).get(k2)).push({i, end:1});
+  }
+  const used = new Uint8Array(segs.length);
+  const polys = [];
+  for(let i=0;i<segs.length;i++){
+    if(used[i]) continue;
+    const poly = [];
+    const s0 = segs[i];
+    poly.push({x:s0[0],y:s0[1]}, {x:s0[2],y:s0[3]});
+    used[i]=1;
+    const startK = key(s0[0],s0[1]);
+    let safety = 0;
+    while(safety++ < segs.length+10){
+      const last = poly[poly.length-1];
+      const k = key(last.x,last.y);
+      if(k===startK) break;
+      const cands = map.get(k) || [];
+      let found = false;
+      for(const c2 of cands){
+        if(used[c2.i]) continue;
+        const s = segs[c2.i];
+        poly.push(c2.end===0 ? {x:s[2],y:s[3]} : {x:s[0],y:s[1]});
+        used[c2.i] = 1; found = true; break;
+      }
+      if(!found) break;
+    }
+    if(poly.length>=3) polys.push(poly);
+  }
+  return polys;
+}
+
+function rdp(points, eps){
+  if(points.length<3) return points.slice();
+  const closed = points[0].x===points[points.length-1].x && points[0].y===points[points.length-1].y;
+  const pts = closed ? points.slice(0,-1) : points;
+  if(pts.length<3) return points.slice();
+  const keep = new Uint8Array(pts.length);
+  keep[0]=1; keep[pts.length-1]=1;
+  const stack = [[0, pts.length-1]];
+  while(stack.length){
+    const [a,b] = stack.pop();
+    let maxD=0, idx=-1;
+    const ax=pts[a].x, ay=pts[a].y, bx=pts[b].x, by=pts[b].y;
+    const dx=bx-ax, dy=by-ay, len2=dx*dx+dy*dy||1;
+    for(let i=a+1;i<b;i++){
+      const px=pts[i].x-ax, py=pts[i].y-ay;
+      const t = Math.max(0, Math.min(1, (px*dx+py*dy)/len2));
+      const sx = px - t*dx, sy = py - t*dy;
+      const d2 = sx*sx + sy*sy;
+      if(d2>maxD){ maxD=d2; idx=i; }
+    }
+    if(idx>=0 && maxD > eps*eps){ keep[idx]=1; stack.push([a,idx]); stack.push([idx,b]); }
+  }
+  const out = [];
+  for(let i=0;i<pts.length;i++) if(keep[i]) out.push(pts[i]);
+  if(closed) out.push({x:out[0].x,y:out[0].y});
+  return out;
+}
+
+function computeBorderForLayer(group, layerIdx){
+  const { weightMm, mode, trace, workRes, mergeGapMm, minPieceMm2 } = APP.border;
+  const cacheKey = `${group.name}:${layerIdx}:${weightMm}:${mode}:${trace}:${workRes}:${group.sizeMm}:${mergeGapMm}:${minPieceMm2}`;
+  if(APP.borderCache[cacheKey]) return APP.borderCache[cacheKey];
+  const A = getLayerAlpha(group, layerIdx, workRes);
+  let r = 0;
+  if(mode==="outer" || mode==="inner") r = Math.max(0, Math.round(weightMm * A.pxPerMm));
+  let m;
+  if(mode==="outer") m = dilate(A.mask, A.w, A.h, r);
+  else if(mode==="inner") m = erode(A.mask, A.w, A.h, r);
+  else m = A.mask;
+  const closePx = Math.max(0, Math.round((mergeGapMm || 0) * 0.5 * A.pxPerMm));
+  const minAreaPx = Math.max(0, Math.round((minPieceMm2 || 0) * A.pxPerMm * A.pxPerMm));
+  if(closePx > 0 || minAreaPx > 0){
+    m = cleanupMask(m, A.w, A.h, closePx, minAreaPx);
+  }
+  const pw = A.w+2, ph = A.h+2;
+  const pm = new Uint8Array(pw*ph);
+  for(let y=0;y<A.h;y++) for(let x=0;x<A.w;x++) pm[(y+1)*pw+(x+1)] = m[y*A.w+x];
+  let polys = tracePolygons(pm, pw, ph);
+  polys = polys.map(p => p.map(pt => ({x:pt.x-1, y:pt.y-1})));
+  if(trace==="aa") polys = polys.map(p=>rdp(p, 0.6));
+  const out = { polysWorkPx: polys, w:A.w, h:A.h, pxPerMm:A.pxPerMm, scale:A.scale, mmPerWorkPx:A.mmPerWorkPx, strokedMask: m };
+  APP.borderCache[cacheKey] = out;
+  return out;
+}
+
+// Assigns every pixel of A's canvas to its nearest color-component label via 4-connected BFS.
+// Pixels inside a colored region keep their component label; transparent pixels inherit the
+// label of the closest colored pixel. Used by split to partition stroked geometry by the
+// underlying color region rather than by stroked polygon topology.
+function buildColorLabelMap(A){
+  const w = A.w, h = A.h, total = w*h;
+  const { labels } = labelComponents(A.mask, w, h);
+  const out = new Int32Array(labels);
+  const dist = new Int32Array(total);
+  const queue = [];
+  for(let i=0;i<total;i++){
+    if(out[i]){ dist[i] = 0; queue.push(i); }
+    else { dist[i] = -1; }
+  }
+  let head = 0;
+  while(head < queue.length){
+    const idx = queue[head++];
+    const x = idx % w, y = (idx - x) / w;
+    const lbl = out[idx], d1 = dist[idx] + 1;
+    if(x>0){ const n=idx-1; if(dist[n]===-1){ out[n]=lbl; dist[n]=d1; queue.push(n); } }
+    if(x<w-1){ const n=idx+1; if(dist[n]===-1){ out[n]=lbl; dist[n]=d1; queue.push(n); } }
+    if(y>0){ const n=idx-w; if(dist[n]===-1){ out[n]=lbl; dist[n]=d1; queue.push(n); } }
+    if(y<h-1){ const n=idx+w; if(dist[n]===-1){ out[n]=lbl; dist[n]=d1; queue.push(n); } }
+  }
+  return out;
+}
+
+function tracePolysFromMask(m, w, h, simplify){
+  const pw = w+2, ph = h+2;
+  const pm = new Uint8Array(pw*ph);
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++) pm[(y+1)*pw+(x+1)] = m[y*w+x];
+  let polys = tracePolygons(pm, pw, ph);
+  polys = polys.map(p => p.map(pt => ({x:pt.x-1, y:pt.y-1})));
+  if(simplify) polys = polys.map(p=>rdp(p, 0.6));
+  return polys;
+}
+
+async function recomputeAllBorders(){
+  APP.border.weightMm = +borderWeightI.value || 0;
+  APP.border.mode = borderModeI.value;
+  APP.border.trace = traceModeI.value;
+  APP.border.workRes = Math.max(200, +workResI.value || 600);
+  APP.border.mergeGapMm = Math.max(0, +mergeGapI.value || 0);
+  APP.border.minPieceMm2 = Math.max(0, +minPieceI.value || 0);
+  APP.layerCache = {}; APP.borderCache = {}; APP.splitCache = {}; APP.nestResult = null;
+  setStepEnabled(4,false); setStepDone(3,false);
+  setStepDone(2, false);
+  clear(borderPreview);
+  // Show a transient loading placeholder
+  const loadingTile = el("div", { class:"preview-tile", style:"grid-column:1/-1;display:flex;align-items:center;gap:10px;justify-content:center;padding:18px" },
+    el("span", { class:"spinner" }),
+    el("span", { text:t("s2.computing"), style:"color:var(--muted);font-size:12px" }),
+  );
+  borderPreview.appendChild(loadingTile);
+  await new Promise(r=>requestAnimationFrame(r));
+  clear(borderPreview);
+  for(const n of Object.keys(APP.groups).sort()){
+    const g = APP.groups[n];
+    for(const L of g.layers){
+      const b = computeBorderForLayer(g, L.idx);
+      const tile = el("div", { class:"preview-tile" });
+      const svgSmall = polysToSVGNode(b.polysWorkPx, b.w, b.h, 180);
+      tile.appendChild(svgSmall);
+      tile.appendChild(el("div", { class:"cap", text: t("s2.pathInfo", { name: `${n}_${L.idx}`, paths: b.polysWorkPx.length, pts: totalPoints(b.polysWorkPx) }) }));
+      attachMagnify(tile, ()=>polysToSVGNode(b.polysWorkPx, b.w, b.h, 600));
+      borderPreview.appendChild(tile);
+      // yield occasionally so UI stays responsive on big sets
+      await new Promise(r=>setTimeout(r,0));
+    }
+  }
+  setStepDone(2, true);
+}
+function totalPoints(polys){ return polys.reduce((s,p)=>s+p.length,0); }
+
+function polysToSVGNode(polys, w, h, viewW){
+  const aspect = h/w;
+  const vw = viewW, vh = Math.round(viewW*aspect);
+  let d = "";
+  for(const p of polys){
+    if(!p.length) continue;
+    d += `M ${p[0].x.toFixed(2)} ${p[0].y.toFixed(2)} `;
+    for(let i=1;i<p.length;i++) d += `L ${p[i].x.toFixed(2)} ${p[i].y.toFixed(2)} `;
+    d += "Z ";
+  }
+  return el("svg", { width:String(vw), height:String(vh), viewBox:`0 0 ${w} ${h}` },
+    el("path", { d, fill:"none", stroke:"#7aa2ff", "stroke-width": String(Math.max(1, w/300)) }),
+  );
+}
+
+document.getElementById("toStep3").addEventListener("click", ()=>{
+  setStepEnabled(3,true); setStepDone(2,true);
+  gotoStep(3);
+  buildPerImagePanel();
+});
+
+/* ---------- Step 3: per-image + sheet & nesting ---------- */
+const sheetWI = document.getElementById("sheetW");
+const sheetHI = document.getElementById("sheetH");
+const edgeMarginI = document.getElementById("edgeMargin");
+const partGapI = document.getElementById("partGap");
+const rotModeI = document.getElementById("rotMode");
+const runNestBtn = document.getElementById("runNest");
+const nestStatus = document.getElementById("nestStatus");
+const nestProgress = document.getElementById("nestProgress");
+const nestBench = document.getElementById("nestBench");
+const nestPreview = document.getElementById("nestPreview");
+const toStep4Btn = document.getElementById("toStep4");
+const perImageList = document.getElementById("perImageList");
+const globalSplitI = document.getElementById("globalSplit");
+const applyGlobalSplitBtn = document.getElementById("applyGlobalSplit");
+
+function splitLabel(mode){ return t("s3.splitLabel" + (mode|0)); }
+
+globalSplitI.addEventListener("change", ()=>{
+  APP.defaultSplit = +globalSplitI.value || 0;
+});
+applyGlobalSplitBtn.addEventListener("click", ()=>{
+  APP.defaultSplit = +globalSplitI.value || 0;
+  for(const k of Object.keys(APP.groups)) APP.groups[k].splitMode = APP.defaultSplit;
+  APP.nestResult = null;
+  toStep4Btn.disabled = true;
+  setStepEnabled(4,false); setStepDone(3,false);
+  buildPerImagePanel();
+});
+
+function buildPerImagePanel(){
+  clear(perImageList);
+  const names = Object.keys(APP.groups).sort();
+  for(const n of names){
+    const g = APP.groups[n];
+    const card = renderImageCard(g);
+    perImageList.appendChild(card);
+  }
+}
+
+function renderImageCard(g){
+  const summaryThumb = el("div", { class:"thumb" }, makeLayerThumb(g, 60, false));
+  const summaryStrong = el("strong", { text: g.name });
+  const summarySub = el("span", { class:"sub" });
+  function refreshSummary(){
+    const pieceCounts = g.layers.map(L=>countPieces(g, L.idx));
+    const totalPieces = pieceCounts.reduce((s,c)=>s+c,0) * g.qty;
+    summarySub.textContent = t("s3.summary", {
+      nLayers: g.layers.length,
+      size: g.sizeMm,
+      qty: g.qty,
+      split: splitLabel(g.splitMode||0),
+      pieces: totalPieces,
+    });
+  }
+
+  const sizeI = el("input", { type:"number", min:"1", step:"0.5", value:String(g.sizeMm), style:"width:100px",
+    oninput: e=>{ g.sizeMm = Math.max(1, +e.target.value||30); APP.layerCache={}; APP.borderCache={}; APP.splitCache={}; APP.nestResult=null; toStep4Btn.disabled=true; setStepEnabled(4,false); refreshSummary(); refreshSplitPreview(); }
+  });
+  const qtyI = el("input", { type:"number", min:"1", step:"1", value:String(g.qty), style:"width:80px",
+    oninput: e=>{ g.qty = Math.max(1, Math.floor(+e.target.value||1)); APP.nestResult=null; toStep4Btn.disabled=true; setStepEnabled(4,false); refreshSummary(); }
+  });
+  const splitI = el("select", { style:"width:230px",
+    onchange: e=>{ g.splitMode = +e.target.value||0; APP.splitCache={}; APP.nestResult=null; toStep4Btn.disabled=true; setStepEnabled(4,false); refreshSummary(); refreshSplitPreview(); }
+  },
+    el("option", { value:"0", text:t("s3.cardSplit0") }),
+    el("option", { value:"1", text:t("s3.cardSplit1") }),
+    el("option", { value:"2", text:t("s3.cardSplit2") }),
+    el("option", { value:"3", text:t("s3.cardSplit3") }),
+  );
+  splitI.value = String(g.splitMode||0);
+
+  const splitGrid = el("div", { class:"layer-split-grid" });
+  function refreshSplitPreview(){
+    clear(splitGrid);
+    for(const L of g.layers){
+      const pieces = computeSplitPieces(g, L.idx);
+      const tile = el("div", { class:"layer-split-tile" });
+      const svg = piecesToSVGNode(pieces, g, 130);
+      attachMagnify(tile, ()=>piecesToSVGNode(pieces, g, 500));
+      tile.appendChild(svg);
+      tile.appendChild(el("div", { class:"cap", text: t("s3.layerPieces", { idx: L.idx, n: pieces.length }) }));
+      splitGrid.appendChild(tile);
+    }
+  }
+
+  attachMagnify(summaryThumb, ()=>makeLayerThumb(g, 600, false));
+
+  const card = el("details", { class:"img-card" },
+    el("summary", null,
+      summaryThumb,
+      el("div", { class:"summary-meta" }, summaryStrong, summarySub),
+    ),
+    el("div", { class:"body" },
+      el("div", { class:"row" },
+        el("label", null, t("s3.size"), sizeI),
+        el("label", null, t("s3.qty"), qtyI),
+        el("label", null, t("s3.splitStrategy"), splitI),
+      ),
+      el("p", { class:"hint", style:"margin:6px 0 0", text:t("s3.pieceHint") }),
+      splitGrid,
+    ),
+  );
+  card.addEventListener("toggle", ()=>{ if(card.open) refreshSplitPreview(); });
+  refreshSummary();
+  return card;
+}
+
+function piecesToSVGNode(pieces, group, viewW){
+  const b = computeBorderForLayer(group, group.layers[0].idx);
+  const w = b.w, h = b.h;
+  const aspect = h/w;
+  const vh = Math.round(viewW*aspect);
+  const colors = ["#7aa2ff","#7ad4a3","#e6b35a","#e08aa3","#a78bfa","#5fc0d0","#ff8c66","#9ad26b"];
+  const svg = el("svg", { width:String(viewW), height:String(vh), viewBox:`0 0 ${w} ${h}` });
+  svg.appendChild(el("rect", { x:"0", y:"0", width:String(w), height:String(h), fill:"#0a0c10" }));
+  pieces.forEach((piece, i)=>{
+    let d = "";
+    for(const poly of piece){
+      if(!poly.length) continue;
+      d += `M ${poly[0].x.toFixed(2)} ${poly[0].y.toFixed(2)} `;
+      for(let j=1;j<poly.length;j++) d += `L ${poly[j].x.toFixed(2)} ${poly[j].y.toFixed(2)} `;
+      d += "Z ";
+    }
+    const col = colors[i%colors.length];
+    svg.appendChild(el("path", { d, fill:col+"33", stroke:col, "stroke-width": String(Math.max(1, w/300)), "fill-rule":"evenodd" }));
+  });
+  return svg;
+}
+
+runNestBtn.addEventListener("click", ()=>{
+  // No global overlay — runNest manages the button spinner, status line ("X/Y done · which-layer running")
+  // and progress bar itself. Lock the size/sheet input panels during the run so the user can't
+  // mutate inputs that won't take effect anyway, but keep the run-notice panel (status, progress,
+  // bench output) fully visible.
+  const panels = [
+    document.getElementById("perImageList") && document.getElementById("perImageList").closest(".panel"),
+    sheetWI && sheetWI.closest(".panel"),
+  ].filter(Boolean);
+  return runScoped(panels, runNest);
+});
+
+async function runNest(){
+  APP.sheet.w = +sheetWI.value || 200;
+  APP.sheet.h = +sheetHI.value || 240;
+  APP.sheet.edge = +edgeMarginI.value || 0;
+  APP.sheet.gap = +partGapI.value || 0;
+  APP.sheet.rot = rotModeI.value;
+  setBtnLoading(runNestBtn, true);
+  nestStatus.textContent = t("s3.nesting");
+  clear(nestPreview);
+  nestProgress.style.width = "0%";
+  nestBench.classList.remove("show");
+  clear(nestBench);
+  const tasks = [];
+  for(const n of Object.keys(APP.groups).sort()){
+    const g = APP.groups[n];
+    for(const L of g.layers) tasks.push({ group:g, layerIdx:L.idx });
+  }
+
+  // Pre-build per-layer kernel inputs on the main thread (border tracing/split caches use DOM canvas).
+  const layerInputs = tasks.map(({ group, layerIdx }) => ({
+    parent: group.name, layerIdx,
+    label: `${group.name}_${layerIdx}`,
+    task: buildLayerTask(group, layerIdx),
+  }));
+
+  // Live progress state, surfaced through nestStatus + nestProgress while the pool drains.
+  const totalLayers = layerInputs.length;
+  const runningLabels = new Set();
+  let doneCount = 0;
+  let usedWorkers = 1;
+  function refreshProgress(){
+    nestProgress.style.width = `${(doneCount/Math.max(1,totalLayers)*100).toFixed(0)}%`;
+    if(doneCount >= totalLayers) return; // final text is set after the loop
+    const running = Array.from(runningLabels);
+    const head = running.slice(0, 3).join(", ");
+    const tail = running.length > 3 ? ` +${running.length-3}` : "";
+    nestStatus.textContent = t("s3.nestProgress", {
+      done: doneCount,
+      total: totalLayers,
+      running: running.length,
+      workers: usedWorkers,
+      names: head + tail || "—",
+    });
+  }
+  refreshProgress();
+
+  const tStart = performance.now();
+  let result;
+  let pool = null;
+
+  if(_supportsNestWorker() && tasks.length > 1){
+    const cores = navigator.hardwareConcurrency || 4;
+    const poolSize = Math.max(1, Math.min(cores, tasks.length, NEST_WORKER_LIMIT));
+    usedWorkers = poolSize;
+    pool = new NestPool(poolSize);
+    refreshProgress();
+    try {
+      const promises = layerInputs.map(input => pool.run(input.task, {
+        onStart: () => { runningLabels.add(input.label); refreshProgress(); },
+        onEnd:   () => { runningLabels.delete(input.label); doneCount++; refreshProgress(); },
+      }).then(r => {
+        r.parent = input.parent;
+        r.layerIdx = input.layerIdx;
+        return r;
+      }));
+      result = await Promise.all(promises);
+    } finally {
+      pool.terminate();
+    }
+  } else {
+    result = [];
+    for(let i=0;i<layerInputs.length;i++){
+      const input = layerInputs[i];
+      runningLabels.add(input.label); refreshProgress();
+      const r = nestKernel(input.task);
+      r.parent = input.parent; r.layerIdx = input.layerIdx;
+      result.push(r);
+      runningLabels.delete(input.label);
+      doneCount++;
+      refreshProgress();
+      await new Promise(resolve=>setTimeout(resolve,0));
+    }
+  }
+
+  const wallMs = performance.now() - tStart;
+  let sumRaster=0, sumPack=0, sumPlace=0, sumCompute=0;
+  for(const r of result){
+    sumRaster += r.rasterMs||0;
+    sumPack   += r.packMs||0;
+    sumPlace  += r.placeMs||0;
+    r.totalMs = (r.rasterMs||0) + (r.packMs||0) + (r.placeMs||0);
+    sumCompute += r.totalMs;
+  }
+  APP.nestResult = result;
+  APP.nestBench = {
+    wallMs, sumComputeMs: sumCompute,
+    rasterMs: sumRaster, packMs: sumPack, placeMs: sumPlace,
+    workers: usedWorkers,
+    totalMs: wallMs, // back-compat for nestStatus templating
+  };
+  renderNestPreview();
+  renderNestBench();
+  nestStatus.textContent = t("s3.nestDone", {
+    n: result.reduce((s,r)=>s+r.sheets.length,0),
+    ms: wallMs.toFixed(0),
+  });
+  setBtnLoading(runNestBtn, false);
+  toStep4Btn.disabled = false;
+  setStepEnabled(4,true); setStepDone(3,true);
+}
+
+function padCell(s, n, right){
+  s = String(s);
+  if(s.length >= n) return s;
+  const sp = " ".repeat(n - s.length);
+  return right ? s+sp : sp+s;
+}
+function renderNestBench(){
+  clear(nestBench);
+  if(!APP.nestBench || !APP.nestResult){ nestBench.classList.remove("show"); return; }
+  const b = APP.nestBench;
+  const layers = APP.nestResult.length || 1;
+  const wall = b.wallMs != null ? b.wallMs : (b.totalMs || 0);
+  const seq  = b.sumComputeMs != null ? b.sumComputeMs : wall;
+  const speedup = wall > 0 ? (seq / wall) : 1;
+  const headerLine = t("s3.benchHeader", {
+    wall: wall.toFixed(0),
+    seq: seq.toFixed(0),
+    speedup: speedup.toFixed(2),
+    workers: b.workers || 1,
+    layers,
+  });
+  const breakdown = t("s3.benchBreakdown", {
+    raster: b.rasterMs.toFixed(0),
+    pack:   b.packMs.toFixed(0),
+    place:  b.placeMs.toFixed(0),
+  });
+  nestBench.appendChild(el("span", { class:"total", text: headerLine }));
+  nestBench.appendChild(document.createTextNode("\n" + breakdown + "\n\n"));
+  nestBench.appendChild(document.createTextNode(
+    padCell("layer",30,true) + padCell("pieces",8) + padCell("qty",6) + padCell("placed",8) + padCell("sheets",8) + padCell("ms",10) + "\n"
+  ));
+  nestBench.appendChild(document.createTextNode("─".repeat(70) + "\n"));
+  for(const r of APP.nestResult){
+    const name = `${r.parent}_${r.layerIdx}`;
+    nestBench.appendChild(document.createTextNode(
+      padCell(name.length>28 ? name.slice(0,27)+"…" : name, 30, true)
+      + padCell(r.pieceCount, 8)
+      + padCell(r.copiesPerPiece, 6)
+      + padCell(`${r.qtyPlaced}/${r.qtyRequested}`, 8)
+      + padCell(r.sheets.length, 8)
+      + padCell((r.totalMs||0).toFixed(0), 10)
+      + "\n"
+    ));
+  }
+  nestBench.classList.add("show");
+}
+
+function layerPolysMm(group, layerIdx){
+  const b = computeBorderForLayer(group, layerIdx);
+  const f = b.mmPerWorkPx;
+  return b.polysWorkPx.map(poly=>poly.map(p=>({ x:p.x*f, y:p.y*f })));
+}
+function polysBBox(polys){
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(const p of polys) for(const pt of p){
+    if(pt.x<x0)x0=pt.x; if(pt.x>x1)x1=pt.x;
+    if(pt.y<y0)y0=pt.y; if(pt.y>y1)y1=pt.y;
+  }
+  if(!isFinite(x0)) return {x0:0,y0:0,x1:0,y1:0,w:0,h:0};
+  return {x0,y0,x1,y1, w:x1-x0, h:y1-y0};
+}
+function transPolys(polys, dx, dy){ return polys.map(p=>p.map(pt=>({x:pt.x+dx,y:pt.y+dy}))); }
+function rotPolys(polys, deg){
+  if(!deg) return polys;
+  const a = deg*Math.PI/180, c=Math.cos(a), s=Math.sin(a);
+  return polys.map(p=>p.map(pt=>({ x: pt.x*c - pt.y*s, y: pt.x*s + pt.y*c })));
+}
+function rasterizePolys(polys, w_mm, h_mm, res){
+  const w = Math.max(1, Math.ceil(w_mm*res));
+  const h = Math.max(1, Math.ceil(h_mm*res));
+  const c = document.createElement("canvas"); c.width=w; c.height=h;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle="black"; ctx.beginPath();
+  for(const p of polys){
+    if(!p.length) continue;
+    ctx.moveTo(p[0].x*res, p[0].y*res);
+    for(let i=1;i<p.length;i++) ctx.lineTo(p[i].x*res, p[i].y*res);
+    ctx.closePath();
+  }
+  ctx.fill("evenodd");
+  ctx.strokeStyle="black"; ctx.lineWidth=1; ctx.stroke();
+  const id = ctx.getImageData(0,0,w,h).data;
+  const m = new Uint8Array(w*h);
+  for(let i=0,p=0;i<m.length;i++,p+=4) m[i] = id[p+3] > 32 ? 1 : 0;
+  return { mask:m, w, h };
+}
+function dilatePxFast(mask, w, h, r){
+  if(r<=0) return new Uint8Array(mask);
+  const tmp = new Uint8Array(w*h), out = new Uint8Array(w*h);
+  for(let y=0;y<h;y++){
+    let run=0;
+    for(let x=0;x<w;x++){ if(mask[y*w+x]) run=r+1; tmp[y*w+x]=run>0?1:0; if(run>0) run--; }
+    run=0;
+    for(let x=w-1;x>=0;x--){ if(mask[y*w+x]) run=r+1; if(run>0) tmp[y*w+x]=1; if(run>0) run--; }
+  }
+  for(let x=0;x<w;x++){
+    let run=0;
+    for(let y=0;y<h;y++){ if(tmp[y*w+x]) run=r+1; out[y*w+x]=run>0?1:0; if(run>0) run--; }
+    run=0;
+    for(let y=h-1;y>=0;y--){ if(tmp[y*w+x]) run=r+1; if(run>0) out[y*w+x]=1; if(run>0) run--; }
+  }
+  return out;
+}
+
+/* ---------- Split pieces ---------- */
+function signedArea(poly){
+  let a=0;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++) a += (poly[j].x*poly[i].y - poly[i].x*poly[j].y);
+  return a*0.5;
+}
+function pointInPoly(pt, poly){
+  let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i].x,yi=poly[i].y,xj=poly[j].x,yj=poly[j].y;
+    const intersect=((yi>pt.y)!==(yj>pt.y)) && (pt.x<(xj-xi)*(pt.y-yi)/((yj-yi)||1e-12)+xi);
+    if(intersect) inside=!inside;
+  }
+  return inside;
+}
+function polyCentroidApprox(poly){
+  if(!poly.length) return {x:0,y:0};
+  let x=0,y=0;
+  for(const p of poly){ x+=p.x; y+=p.y; }
+  return { x:x/poly.length, y:y/poly.length };
+}
+function classifyOutersHoles(polys){
+  // For each poly, count how many other polys contain its centroid.
+  // Even depth = outer, odd = hole. Each hole is assigned to its smallest containing outer (deepest parent).
+  const polyBBoxes = polys.map(p=>{
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+    for(const pt of p){ if(pt.x<x0)x0=pt.x; if(pt.x>x1)x1=pt.x; if(pt.y<y0)y0=pt.y; if(pt.y>y1)y1=pt.y; }
+    return { x0,y0,x1,y1, area:Math.abs((x1-x0)*(y1-y0)) };
+  });
+  const depth = polys.map((_,i)=>{
+    const c = polyCentroidApprox(polys[i]);
+    let d = 0;
+    for(let j=0;j<polys.length;j++){
+      if(j===i) continue;
+      const bb = polyBBoxes[j];
+      if(c.x<bb.x0||c.x>bb.x1||c.y<bb.y0||c.y>bb.y1) continue;
+      if(pointInPoly(c, polys[j])) d++;
+    }
+    return d;
+  });
+  const outers = []; // {polyIdx, holes:[polyIdx]}
+  const outerOf = new Array(polys.length).fill(-1);
+  for(let i=0;i<polys.length;i++) if(depth[i]%2===0) outers.push({ polyIdx:i, holes:[] });
+  for(let i=0;i<polys.length;i++){
+    if(depth[i]%2===0) continue;
+    // hole — find smallest outer that contains its centroid
+    const c = polyCentroidApprox(polys[i]);
+    let best=-1, bestArea=Infinity;
+    for(const o of outers){
+      const bb = polyBBoxes[o.polyIdx];
+      if(c.x<bb.x0||c.x>bb.x1||c.y<bb.y0||c.y>bb.y1) continue;
+      if(pointInPoly(c, polys[o.polyIdx]) && bb.area<bestArea){ best=o.polyIdx; bestArea=bb.area; }
+    }
+    if(best>=0){ const o = outers.find(o=>o.polyIdx===best); o.holes.push(i); outerOf[i]=best; }
+  }
+  return { outers, outerOf };
+}
+
+function computeSplitPieces(group, layerIdx){
+  const mode = group.splitMode||0;
+  const cacheKey = `${group.name}:${layerIdx}:${mode}:${group.sizeMm}:${APP.border.weightMm}:${APP.border.mode}:${APP.border.trace}:${APP.border.workRes}:${APP.border.mergeGapMm}:${APP.border.minPieceMm2}`;
+  if(APP.splitCache[cacheKey]) return APP.splitCache[cacheKey];
+  const b = computeBorderForLayer(group, layerIdx);
+  let pieces;
+  if(mode === 0){
+    pieces = [b.polysWorkPx];
+  } else {
+    // Group stroked geometry by underlying color component (un-stroked alpha).
+    // This way: outer-stroke that merges two color blobs still splits into N pieces;
+    // inner-stroke that fragments one color blob still stays as one piece.
+    const A = getLayerAlpha(group, layerIdx, APP.border.workRes);
+    const labelMap = buildColorLabelMap(A);
+    const sm = b.strokedMask, sw = b.w, sh = b.h;
+    const labelsPresent = new Set();
+    for(let i=0;i<sm.length;i++) if(sm[i] && labelMap[i]) labelsPresent.add(labelMap[i]);
+    const simplify = APP.border.trace === "aa";
+    pieces = [];
+    for(const lbl of labelsPresent){
+      const sub = new Uint8Array(sm.length);
+      for(let i=0;i<sm.length;i++) if(sm[i] && labelMap[i] === lbl) sub[i] = 1;
+      const groupPolys = tracePolysFromMask(sub, sw, sh, simplify);
+      if(!groupPolys.length) continue;
+      if(mode === 1){
+        pieces.push(groupPolys);
+      } else if(mode === 2){
+        for(const p of groupPolys) pieces.push([p]);
+      } else { // mode 3: outer-only
+        const { outers } = classifyOutersHoles(groupPolys);
+        pieces.push(outers.map(o => groupPolys[o.polyIdx]));
+      }
+    }
+  }
+  APP.splitCache[cacheKey] = pieces;
+  return pieces;
+}
+function countPieces(group, layerIdx){
+  return computeSplitPieces(group, layerIdx).length;
+}
+
+/* NEST_RES lowered from 4 → 2 px/mm: nesting cost scales ~res², ~4× speedup at near-imperceptible
+   placement granularity loss for typical sheet sizes. The byte-mask collision scan was also
+   replaced with a Uint32 bit-packed mask (32 px per word) — collision becomes one AND per word. */
+const NEST_RES = 2;
+
+function packMaskFromBytes(bytes, w, h){
+  const wordsPerRow = (w + 31) >>> 5;
+  const bits = new Uint32Array(wordsPerRow * h);
+  for(let y=0; y<h; y++){
+    const rowOff = y * w;
+    const wordOff = y * wordsPerRow;
+    for(let x=0; x<w; x++){
+      if(bytes[rowOff + x]) bits[wordOff + (x >>> 5)] |= (1 << (x & 31)) >>> 0;
+    }
+  }
+  return { bits, wordsPerRow, w, h };
+}
+function makeEmptyPackedSheet(w, h){
+  const wordsPerRow = (w + 31) >>> 5;
+  return { bits: new Uint32Array(wordsPerRow * h), wordsPerRow, w, h };
+}
+function bitTryPlace(sheet, v){
+  const sw = sheet.w, sh = sheet.h, sWPR = sheet.wordsPerRow;
+  const vw = v.w, vh = v.h, vWPR = v.wordsPerRow;
+  if(vw > sw || vh > sh) return null;
+  const sb = sheet.bits, vb = v.bits;
+  const maxPx = sw - vw, maxPy = sh - vh;
+  for(let py=0; py<=maxPy; py++){
+    outer:
+    for(let px=0; px<=maxPx; px++){
+      const shift = px & 31;
+      const wordOff = px >>> 5;
+      const invShift = 32 - shift;
+      for(let yy=0; yy<vh; yy++){
+        const sBase = (py + yy) * sWPR;
+        const vBase = yy * vWPR;
+        for(let w=0; w<vWPR; w++){
+          const word = vb[vBase + w];
+          if(word === 0) continue;
+          const lo = (word << shift) >>> 0;
+          if((sb[sBase + wordOff + w] & lo) !== 0) continue outer;
+          if(shift !== 0){
+            const hi = (word >>> invShift) >>> 0;
+            if(hi !== 0 && (sb[sBase + wordOff + w + 1] & hi) !== 0) continue outer;
+          }
+        }
+      }
+      return { px, py };
+    }
+  }
+  return null;
+}
+function bitCommit(sheet, v, px, py){
+  const sWPR = sheet.wordsPerRow;
+  const vh = v.h, vWPR = v.wordsPerRow;
+  const sb = sheet.bits, vb = v.bits;
+  const shift = px & 31;
+  const wordOff = px >>> 5;
+  const invShift = 32 - shift;
+  for(let yy=0; yy<vh; yy++){
+    const sBase = (py + yy) * sWPR;
+    const vBase = yy * vWPR;
+    for(let w=0; w<vWPR; w++){
+      const word = vb[vBase + w];
+      if(word === 0) continue;
+      sb[sBase + wordOff + w] |= (word << shift) >>> 0;
+      if(shift !== 0){
+        const hi = (word >>> invShift) >>> 0;
+        if(hi !== 0) sb[sBase + wordOff + w + 1] |= hi;
+      }
+    }
+  }
+}
+
+/* Per-column profiles: bottomProfile[xx] = lowest occupied row in that column (-1 if empty);
+   topProfile[xx] = highest occupied row + 1 (-1 if empty). Used by skyline-based BL fit. */
+function computeProfiles(byteMask, w, h){
+  const bp = new Int32Array(w);
+  const tp = new Int32Array(w);
+  for(let xx=0; xx<w; xx++){
+    let bot = -1, top = -1;
+    for(let yy=0; yy<h; yy++){
+      if(byteMask[yy*w + xx]){ if(bot<0) bot = yy; top = yy; }
+    }
+    bp[xx] = bot;
+    tp[xx] = top<0 ? -1 : top + 1;
+  }
+  return { bottomProfile: bp, topProfile: tp };
+}
+
+/* Bit-collision check at a fixed (px,py). Same logic as bitTryPlace's inner test. */
+function bitPlacementCollides(packed, v, px, py){
+  const sWPR = packed.wordsPerRow;
+  const vh = v.h, vWPR = v.wordsPerRow;
+  const sb = packed.bits, vb = v.bits;
+  const shift = px & 31;
+  const wordOff = px >>> 5;
+  const invShift = 32 - shift;
+  for(let yy=0; yy<vh; yy++){
+    const sBase = (py + yy) * sWPR;
+    const vBase = yy * vWPR;
+    for(let w=0; w<vWPR; w++){
+      const word = vb[vBase + w];
+      if(word === 0) continue;
+      const lo = (word << shift) >>> 0;
+      if((sb[sBase + wordOff + w] & lo) !== 0) return true;
+      if(shift !== 0){
+        const hi = (word >>> invShift) >>> 0;
+        if(hi !== 0 && (sb[sBase + wordOff + w + 1] & hi) !== 0) return true;
+      }
+    }
+  }
+  return false;
+}
+
+/* Skyline / bottom-left placement search.
+   Per column px, derive the lowest legal py from skyline + variant's bottomProfile,
+   then verify with a bitmask collision check (covers concave-overhang cases the
+   skyline alone would mis-estimate). O(sw·vw) candidates instead of O(sw·sh). */
+function bitTryPlaceSkyline(packed, skyline, v){
+  const sw = packed.w, sh = packed.h;
+  const vw = v.w, vh = v.h;
+  if(vw > sw || vh > sh) return null;
+  const bp = v.bottomProfile;
+  const maxPx = sw - vw;
+  const maxPy = sh - vh;
+  let bestPx = -1, bestPy = sh + 1;
+  for(let px=0; px<=maxPx; px++){
+    let pyMin = 0;
+    for(let xx=0; xx<vw; xx++){
+      const b = bp[xx];
+      if(b < 0) continue;
+      const cand = skyline[px + xx] - b;
+      if(cand > pyMin) pyMin = cand;
+    }
+    if(pyMin > maxPy) continue;
+    if(pyMin > bestPy || (pyMin === bestPy && px >= bestPx)) continue;
+    if(bitPlacementCollides(packed, v, px, pyMin)) continue;
+    bestPx = px; bestPy = pyMin;
+  }
+  return bestPx >= 0 ? { px: bestPx, py: bestPy } : null;
+}
+
+/* Raise the skyline above the just-committed variant. */
+function commitSkyline(skyline, v, px, py){
+  const tp = v.topProfile;
+  const vw = v.w;
+  for(let xx=0; xx<vw; xx++){
+    const t = tp[xx];
+    if(t < 0) continue;
+    const sky = py + t;
+    if(sky > skyline[px + xx]) skyline[px + xx] = sky;
+  }
+}
+
+/* Pure kernel — no DOM. Reused on the main thread (sequential fallback) and inside
+   each Web Worker (parallel path). The worker scope provides its own OffscreenCanvas-based
+   rasterizePolys; the main thread keeps the original DOM-canvas one. */
+function nestKernel(task){
+  const piecesMm = task.piecesMm;
+  const qty = task.qty;
+  const sheet = task.sheet;
+  const NEST_RES = task.NEST_RES;
+  const rotations = task.rotations;
+  const innerW = Math.max(0, sheet.w - 2*sheet.edge);
+  const innerH = Math.max(0, sheet.h - 2*sheet.edge);
+  const sw = Math.max(1, Math.ceil(innerW*NEST_RES));
+  const sh = Math.max(1, Math.ceil(innerH*NEST_RES));
+  const gapPx = Math.max(0, Math.round(sheet.gap*NEST_RES));
+
+  let rasterMs = 0, packMs = 0, placeMs = 0;
+
+  const tR0 = performance.now();
+  // Split the configured gap symmetrically across both touching pieces. We must pad the
+  // canvas before dilating: dilatePxFast on a tight bbox-sized mask only fills concavities,
+  // so a convex shape's footprint never grows and the gap collapses to ~0 between bboxes.
+  const halfGap = (gapPx + 1) >> 1;
+  const variantsBytes = piecesMm.map(pieceMm => rotations.map(deg=>{
+    const rp = rotPolys(pieceMm, deg);
+    const bb = polysBBox(rp);
+    const shifted = transPolys(rp, -bb.x0, -bb.y0);
+    const r = rasterizePolys(shifted, bb.w, bb.h, NEST_RES);
+    let baseMask = r.mask, baseW = r.w, baseH = r.h;
+    if(halfGap > 0){
+      const newW = baseW + 2*halfGap, newH = baseH + 2*halfGap;
+      const padded = new Uint8Array(newW * newH);
+      for(let yy=0; yy<baseH; yy++){
+        const src = yy * baseW, dst = (yy + halfGap) * newW + halfGap;
+        for(let xx=0; xx<baseW; xx++) if(baseMask[src + xx]) padded[dst + xx] = 1;
+      }
+      baseMask = padded; baseW = newW; baseH = newH;
+    }
+    const inflated = halfGap > 0 ? dilatePxFast(baseMask, baseW, baseH, halfGap) : baseMask;
+    const profiles = computeProfiles(inflated, baseW, baseH);
+    return {
+      deg, polys: shifted, mask: inflated, mw: baseW, mh: baseH, area: bb.w*bb.h,
+      bottomProfile: profiles.bottomProfile, topProfile: profiles.topProfile,
+      padOffset: halfGap,
+    };
+  }));
+  rasterMs = performance.now() - tR0;
+
+  const tP0 = performance.now();
+  const pieceVariants = variantsBytes.map(variants => variants.map(v => {
+    const packed = packMaskFromBytes(v.mask, v.mw, v.mh);
+    return {
+      deg: v.deg, polys: v.polys, area: v.area,
+      bits: packed.bits, wordsPerRow: packed.wordsPerRow, w: packed.w, h: packed.h,
+      bottomProfile: v.bottomProfile, topProfile: v.topProfile,
+      padOffset: v.padOffset,
+    };
+  }));
+  packMs = performance.now() - tP0;
+
+  // Largest-first piece order, then build the queue (qty copies, interleaved).
+  const pieceOrder = piecesMm.map((_,i)=>i).sort((a,b)=> pieceVariants[b][0].area - pieceVariants[a][0].area);
+  const queue = [];
+  for(let q=0; q<qty; q++) for(const i of pieceOrder) queue.push(i);
+
+  function newSheet(){
+    return {
+      packed: makeEmptyPackedSheet(sw, sh),
+      skyline: new Int32Array(sw),
+      placements: [],
+    };
+  }
+  function bestFitFor(curSheet, pieceIdx){
+    let best = null;
+    for(const v of pieceVariants[pieceIdx]){
+      const fit = bitTryPlaceSkyline(curSheet.packed, curSheet.skyline, v);
+      if(fit && (!best || fit.py < best.fit.py || (fit.py === best.fit.py && fit.px < best.fit.px))){
+        best = { v, fit };
+      }
+    }
+    return best;
+  }
+
+  const sheets = [];
+  let cur = newSheet();
+  sheets.push(cur);
+  const totalToPlace = queue.length;
+  let placedTotal = 0;
+  const remaining = queue.slice();
+
+  /* Fill the current sheet greedily — iterate the remaining queue and place every piece
+     that fits at its skyline-derived best position. When a sweep makes no progress, open
+     a new sheet (unless the current one is empty, in which case nothing fits anywhere). */
+  const tPL0 = performance.now();
+  while(remaining.length > 0){
+    const before = remaining.length;
+    for(let i=0; i<remaining.length; ){
+      const pieceIdx = remaining[i];
+      const placed = bestFitFor(cur, pieceIdx);
+      if(placed){
+        bitCommit(cur.packed, placed.v, placed.fit.px, placed.fit.py);
+        commitSkyline(cur.skyline, placed.v, placed.fit.px, placed.fit.py);
+        const off = placed.v.padOffset || 0;
+        cur.placements.push({
+          x: sheet.edge + (placed.fit.px + off) / NEST_RES,
+          y: sheet.edge + (placed.fit.py + off) / NEST_RES,
+          deg: placed.v.deg, polys: placed.v.polys, pieceIdx,
+        });
+        remaining.splice(i, 1);
+        placedTotal++;
+      } else {
+        i++;
+      }
+    }
+    if(remaining.length === 0) break;
+    if(remaining.length === before && cur.placements.length === 0) break;
+    cur = newSheet();
+    sheets.push(cur);
+  }
+  placeMs = performance.now() - tPL0;
+
+  const cleanSheets = sheets.map(s => ({ placements: s.placements }));
+  return {
+    sheets: cleanSheets,
+    qtyRequested: totalToPlace, qtyPlaced: placedTotal,
+    pieceCount: piecesMm.length, copiesPerPiece: qty,
+    rasterMs, packMs, placeMs,
+  };
+}
+
+function buildLayerTask(group, layerIdx){
+  const piecesWorkPx = computeSplitPieces(group, layerIdx);
+  const b = computeBorderForLayer(group, layerIdx);
+  const f = b.mmPerWorkPx;
+  const piecesMm = piecesWorkPx.map(piece => piece.map(poly => poly.map(pt=>({ x:pt.x*f, y:pt.y*f }))));
+  const sheet = APP.sheet;
+  let rotations;
+  if(sheet.rot==="free") rotations = [0,15,30,45,60,75,90,105,120,135,150,165,180,195,210,225,240,255,270,285,300,315,330,345];
+  else if(sheet.rot==="90") rotations = [0,90,180,270];
+  else rotations = [0];
+  return {
+    piecesMm, qty: group.qty,
+    sheet: { w:sheet.w, h:sheet.h, edge:sheet.edge, gap:sheet.gap, rot:sheet.rot },
+    NEST_RES, rotations,
+  };
+}
+
+function nestOneLayer(group, layerIdx){
+  const r = nestKernel(buildLayerTask(group, layerIdx));
+  r.parent = group.name;
+  r.layerIdx = layerIdx;
+  return r;
+}
+
+/* ---------- Worker pool ---------- */
+function _supportsNestWorker(){
+  return typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined";
+}
+function _buildNestWorkerSource(){
+  // Worker-side rasterizer using OffscreenCanvas (drop-in replacement for the DOM-canvas one).
+  const workerRasterize = function rasterizePolys(polys, w_mm, h_mm, res){
+    const w = Math.max(1, Math.ceil(w_mm*res));
+    const h = Math.max(1, Math.ceil(h_mm*res));
+    const c = new OffscreenCanvas(w, h);
+    const ctx = c.getContext("2d");
+    ctx.fillStyle="black"; ctx.beginPath();
+    for(const p of polys){
+      if(!p.length) continue;
+      ctx.moveTo(p[0].x*res, p[0].y*res);
+      for(let i=1;i<p.length;i++) ctx.lineTo(p[i].x*res, p[i].y*res);
+      ctx.closePath();
+    }
+    ctx.fill("evenodd");
+    ctx.strokeStyle="black"; ctx.lineWidth=1; ctx.stroke();
+    const id = ctx.getImageData(0,0,w,h).data;
+    const m = new Uint8Array(w*h);
+    for(let i=0,p=0;i<m.length;i++,p+=4) m[i] = id[p+3] > 32 ? 1 : 0;
+    return { mask:m, w, h };
+  };
+  return [
+    '"use strict";',
+    rotPolys.toString(),
+    polysBBox.toString(),
+    transPolys.toString(),
+    dilatePxFast.toString(),
+    packMaskFromBytes.toString(),
+    makeEmptyPackedSheet.toString(),
+    bitTryPlace.toString(),
+    bitCommit.toString(),
+    computeProfiles.toString(),
+    bitPlacementCollides.toString(),
+    bitTryPlaceSkyline.toString(),
+    commitSkyline.toString(),
+    workerRasterize.toString(),
+    nestKernel.toString(),
+    `self.onmessage = function(e){
+       const m = e.data;
+       try { self.postMessage({ id: m.id, result: nestKernel(m.task) }); }
+       catch(err){ self.postMessage({ id: m.id, error: String(err && err.stack || err) }); }
+     };`,
+  ].join("\n\n");
+}
+let _nestWorkerUrl = null;
+function _getNestWorkerUrl(){
+  if(_nestWorkerUrl) return _nestWorkerUrl;
+  const blob = new Blob([_buildNestWorkerSource()], { type:"application/javascript" });
+  _nestWorkerUrl = URL.createObjectURL(blob);
+  return _nestWorkerUrl;
+}
+/* Hard cap on workers regardless of cores or task count — each worker holds its own
+   canvas + bitmask buffers, so spawning hundreds for a 1000-layer job would blow memory. */
+const NEST_WORKER_LIMIT = 8;
+
+class NestPool {
+  constructor(size){
+    this.size = size;
+    this.workers = [];
+    this.idle = [];
+    this.queue = [];
+    this.pending = new Map();
+    this.nextId = 1;
+    const url = _getNestWorkerUrl();
+    for(let i=0;i<size;i++){
+      const w = new Worker(url);
+      w.onmessage = (e) => this._onMessage(w, e.data);
+      w.onerror = (e) => console.error("[nest worker]", e.message || e);
+      this.workers.push(w);
+      this.idle.push(w);
+    }
+  }
+  _onMessage(w, data){
+    const h = this.pending.get(data.id);
+    if(!h) return;
+    this.pending.delete(data.id);
+    this.idle.push(w);
+    if(h.onEnd) try { h.onEnd(); } catch(_){}
+    if(data.error) h.reject(new Error(data.error));
+    else h.resolve(data.result);
+    this._dispatch();
+  }
+  _dispatch(){
+    while(this.queue.length && this.idle.length){
+      const job = this.queue.shift();
+      const w = this.idle.pop();
+      this.pending.set(job.id, job);
+      if(job.onStart) try { job.onStart(); } catch(_){}
+      w.postMessage({ id: job.id, task: job.task });
+    }
+  }
+  run(task, hooks){
+    return new Promise((resolve, reject)=>{
+      const id = this.nextId++;
+      this.queue.push({
+        id, task, resolve, reject,
+        onStart: hooks && hooks.onStart,
+        onEnd:   hooks && hooks.onEnd,
+      });
+      this._dispatch();
+    });
+  }
+  terminate(){
+    for(const w of this.workers) w.terminate();
+    this.workers = []; this.idle = []; this.queue = []; this.pending.clear();
+  }
+}
+
+function buildNestSheetSVG(sheetData, sheetWmm, sheetHmm, viewW){
+  const viewH = Math.round(viewW * sheetHmm/sheetWmm);
+  const margin = APP.sheet.edge;
+  const svg = el("svg", { viewBox:`0 0 ${sheetWmm} ${sheetHmm}`, width:String(viewW), height:String(viewH), preserveAspectRatio:"xMidYMid meet" });
+  svg.appendChild(el("rect", { x:"0", y:"0", width:String(sheetWmm), height:String(sheetHmm), fill:"none", stroke:"#3a4050", "stroke-width":"0.5" }));
+  svg.appendChild(el("rect", { x:String(margin), y:String(margin), width:String(sheetWmm-2*margin), height:String(sheetHmm-2*margin), fill:"none", stroke:"#2a2f3a", "stroke-dasharray":"2 2", "stroke-width":"0.4" }));
+  let d = "";
+  for(const pl of sheetData.placements) for(const poly of pl.polys){
+    if(!poly.length) continue;
+    d += `M ${(pl.x+poly[0].x).toFixed(2)} ${(pl.y+poly[0].y).toFixed(2)} `;
+    for(let i=1;i<poly.length;i++) d += `L ${(pl.x+poly[i].x).toFixed(2)} ${(pl.y+poly[i].y).toFixed(2)} `;
+    d += "Z ";
+  }
+  svg.appendChild(el("path", { d, fill:"rgba(122,162,255,.15)", stroke:"#7aa2ff", "stroke-width":"0.4", "fill-rule":"evenodd" }));
+  return svg;
+}
+
+function renderNestPreview(){
+  clear(nestPreview);
+  if(!APP.nestResult) return;
+  for(const r of APP.nestResult){
+    for(let si=0; si<r.sheets.length; si++){
+      const s = r.sheets[si];
+      const isLast = si===r.sheets.length-1;
+      const pillCls = (s.placements.length===0) ? "pill warn"
+                    : (isLast && r.qtyPlaced<r.qtyRequested) ? "pill warn"
+                    : "pill good";
+      const pillText = s.placements.length===0 ? t("s3.empty") : t("s3.placed", { n: s.placements.length });
+      const splitNote = r.pieceCount>1 ? t("s3.splitNote", { pieces: r.pieceCount, copies: r.copiesPerPiece }) : "";
+      const svgSmall = buildNestSheetSVG(s, APP.sheet.w, APP.sheet.h, 280);
+      const tile = el("div", { class:"nest-tile" },
+        el("h4", null,
+          el("span", { text: t("s3.sheetCaption", { name: `${r.parent}_${r.layerIdx}`, i: si+1, total: r.sheets.length, splitNote }) }),
+          el("span", { class: pillCls, text: pillText }),
+        ),
+        svgSmall,
+      );
+      attachMagnify(tile, ()=>buildNestSheetSVG(s, APP.sheet.w, APP.sheet.h, 700));
+      nestPreview.appendChild(tile);
+    }
+    if(r.qtyPlaced < r.qtyRequested){
+      const warn = el("div", { class:"nest-tile" },
+        el("h4", { style:"color:var(--warn)", text: t("s3.warnTitle", { name: `${r.parent}_${r.layerIdx}`, placed: r.qtyPlaced, requested: r.qtyRequested }) }),
+        el("p", { class:"hint", style:"margin:0", text:t("s3.warnHint") }),
+      );
+      nestPreview.appendChild(warn);
+    }
+  }
+}
+
+document.getElementById("toStep4").addEventListener("click", ()=>{
+  setStepEnabled(4,true); setStepDone(3,true);
+  gotoStep(4);
+});
+
+/* ---------- Step 4: export ---------- */
+document.querySelectorAll("#formatGrid label").forEach(l=>{
+  const cb = l.querySelector("input");
+  l.addEventListener("click", e=>{
+    if(e.target===cb) return;
+    cb.checked = !cb.checked;
+    l.classList.toggle("checked", cb.checked);
+    syncFormats();
+    e.preventDefault();
+  });
+  cb.addEventListener("change", ()=>{ l.classList.toggle("checked", cb.checked); syncFormats(); });
+});
+function syncFormats(){
+  APP.formats = new Set([...document.querySelectorAll("#formatGrid label")].filter(l=>l.querySelector("input").checked).map(l=>l.dataset.fmt));
+}
+syncFormats();
+
+document.getElementById("exportBtn").addEventListener("click", doExport);
+
+async function doExport(){
+  const status = document.getElementById("exportStatus");
+  const btn = document.getElementById("exportBtn");
+  if(!APP.nestResult){ status.textContent = t("s4.nestFirst"); return; }
+  if(!APP.formats.size){ status.textContent = t("s4.pickFormat"); return; }
+  setBtnLoading(btn, true);
+  status.textContent = "";
+  status.appendChild(el("span", { class:"spinner" }));
+  status.appendChild(document.createTextNode(t("s4.building")));
+  // yield once so spinner renders before sync work
+  await new Promise(r=>requestAnimationFrame(r));
+  try {
+  const files = [];
+  for(const r of APP.nestResult){
+    for(let si=0; si<r.sheets.length; si++){
+      const s = r.sheets[si];
+      if(!s.placements.length) continue;
+      const baseName = `${r.parent}_${r.layerIdx}__sheet${String(si+1).padStart(2,"0")}`;
+      const polys = combinedPolys(s);
+      for(const fmt of APP.formats){
+        const { ext, bytes } = exportSheet(fmt, polys, APP.sheet.w, APP.sheet.h);
+        files.push({ name: `${baseName}.${ext}`, bytes });
+      }
+    }
+  }
+  if(!files.length){ status.textContent = t("s4.nothing"); return; }
+  const zip = makeZip(files);
+  const blob = new Blob([zip], { type:"application/zip" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "img2vector_export.zip";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  status.textContent = t("s4.saved", { n: files.length });
+  } finally {
+    setBtnLoading(btn, false);
+  }
+}
+
+function combinedPolys(sheet){
+  const out = [];
+  for(const pl of sheet.placements) for(const poly of pl.polys){
+    if(!poly.length) continue;
+    out.push(poly.map(pt=>({ x:pl.x+pt.x, y:pl.y+pt.y })));
+  }
+  return out;
+}
+
+function exportSheet(fmt, polys, sheetWmm, sheetHmm){
+  if(fmt==="svg") return { ext:"svg", bytes: utf8(svgWriter(polys, sheetWmm, sheetHmm)) };
+  if(fmt==="dxf") return { ext:"dxf", bytes: utf8(dxfWriter(polys, sheetWmm, sheetHmm)) };
+  if(fmt==="plt") return { ext:"plt", bytes: utf8(pltWriter(polys, sheetWmm, sheetHmm)) };
+  if(fmt==="ai")  return { ext:"ai",  bytes: aiWriter(polys, sheetWmm, sheetHmm) };
+  throw new Error("unknown format "+fmt);
+}
+function utf8(s){ return new TextEncoder().encode(s); }
+
+function svgWriter(polys, w, h){
+  let d = "";
+  for(const p of polys){
+    if(!p.length) continue;
+    d += `M${p[0].x.toFixed(3)} ${p[0].y.toFixed(3)}`;
+    for(let i=1;i<p.length;i++) d += `L${p[i].x.toFixed(3)} ${p[i].y.toFixed(3)}`;
+    d += "Z";
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}mm" height="${h}mm" viewBox="0 0 ${w} ${h}"><path d="${d}" fill="none" stroke="black" stroke-width="0.1"/></svg>`;
+}
+function dxfWriter(polys, w, h){
+  const lines = [];
+  function L(...xs){ for(const x of xs) lines.push(String(x)); }
+  L("0","SECTION","2","HEADER","9","$INSUNITS","70","4","0","ENDSEC");
+  L("0","SECTION","2","ENTITIES");
+  for(const p of polys){
+    if(p.length<2) continue;
+    L("0","LWPOLYLINE","8","CUT","90", String(p.length), "70","1");
+    for(const pt of p) L("10", pt.x.toFixed(4), "20", (h - pt.y).toFixed(4));
+  }
+  L("0","ENDSEC","0","EOF");
+  return lines.join("\r\n");
+}
+function pltWriter(polys, w, h){
+  const U = 40; // 1 mm = 40 plotter units
+  let s = "IN;SP1;";
+  for(const p of polys){
+    if(p.length<2) continue;
+    s += `PU${Math.round(p[0].x*U)},${Math.round((h-p[0].y)*U)};PD`;
+    for(let i=1;i<p.length;i++) s += `${Math.round(p[i].x*U)},${Math.round((h-p[i].y)*U)}` + (i<p.length-1?",":"");
+    s += `,${Math.round(p[0].x*U)},${Math.round((h-p[0].y)*U)};`;
+  }
+  return s + "PU;SP0;IN;";
+}
+function aiWriter(polys, w_mm, h_mm){
+  const MM_TO_PT = 72/25.4;
+  const wPt = w_mm*MM_TO_PT, hPt = h_mm*MM_TO_PT;
+  const cs = ["0.1 w"];
+  for(const p of polys){
+    if(p.length<2) continue;
+    cs.push(`${(p[0].x*MM_TO_PT).toFixed(3)} ${(hPt - p[0].y*MM_TO_PT).toFixed(3)} m`);
+    for(let i=1;i<p.length;i++) cs.push(`${(p[i].x*MM_TO_PT).toFixed(3)} ${(hPt - p[i].y*MM_TO_PT).toFixed(3)} l`);
+    cs.push("h"); cs.push("S");
+  }
+  const content = cs.join("\n");
+  const objs = [];
+  function obj(s){ objs.push(s); return objs.length; }
+  obj("<< /Type /Catalog /Pages 2 0 R >>");
+  obj("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+  obj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${wPt.toFixed(3)} ${hPt.toFixed(3)}] /Contents 4 0 R /Resources << >> >>`);
+  obj(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  let pdf = "%PDF-1.4\n%\xff\xff\xff\xff\n";
+  const offsets = [0];
+  for(let i=0;i<objs.length;i++){
+    offsets.push(pdf.length);
+    pdf += `${i+1} 0 obj\n${objs[i]}\nendobj\n`;
+  }
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objs.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<=objs.length;i++) pdf += offsets[i].toString().padStart(10,"0") + " 00000 n \n";
+  pdf += `trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  const bytes = new Uint8Array(pdf.length);
+  for(let i=0;i<pdf.length;i++) bytes[i] = pdf.charCodeAt(i) & 0xff;
+  return bytes;
+}
+
+function makeZip(files){
+  const table = (function(){ const t=new Uint32Array(256); for(let i=0;i<256;i++){ let c=i; for(let k=0;k<8;k++) c = (c&1)? (0xEDB88320 ^ (c>>>1)) : (c>>>1); t[i]=c>>>0; } return t; })();
+  function crc32(bytes){ let c=0xFFFFFFFF; for(let i=0;i<bytes.length;i++) c = table[(c ^ bytes[i]) & 0xff] ^ (c>>>8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  const enc = new TextEncoder();
+  const localParts = [], central = [];
+  let offset = 0;
+  for(const f of files){
+    const nameBytes = enc.encode(f.name);
+    const data = f.bytes, crc = crc32(data), size = data.length;
+    const lh = new Uint8Array(30 + nameBytes.length);
+    const dv = new DataView(lh.buffer);
+    dv.setUint32(0, 0x04034b50, true);
+    dv.setUint16(4, 20, true); dv.setUint16(6, 0, true); dv.setUint16(8, 0, true);
+    dv.setUint16(10, 0, true); dv.setUint16(12, 0, true);
+    dv.setUint32(14, crc, true); dv.setUint32(18, size, true); dv.setUint32(22, size, true);
+    dv.setUint16(26, nameBytes.length, true); dv.setUint16(28, 0, true);
+    lh.set(nameBytes, 30);
+    localParts.push(lh, data);
+    const cd = new Uint8Array(46 + nameBytes.length);
+    const dv2 = new DataView(cd.buffer);
+    dv2.setUint32(0, 0x02014b50, true); dv2.setUint16(4, 20, true); dv2.setUint16(6, 20, true);
+    dv2.setUint16(8, 0, true); dv2.setUint16(10, 0, true); dv2.setUint16(12, 0, true); dv2.setUint16(14, 0, true);
+    dv2.setUint32(16, crc, true); dv2.setUint32(20, size, true); dv2.setUint32(24, size, true);
+    dv2.setUint16(28, nameBytes.length, true); dv2.setUint16(30, 0, true); dv2.setUint16(32, 0, true);
+    dv2.setUint16(34, 0, true); dv2.setUint16(36, 0, true);
+    dv2.setUint32(38, 0, true); dv2.setUint32(42, offset, true);
+    cd.set(nameBytes, 46);
+    central.push(cd);
+    offset += lh.length + size;
+  }
+  let centralSize = 0; for(const c of central) centralSize += c.length;
+  const centralOffset = offset;
+  const eocd = new Uint8Array(22);
+  const dv = new DataView(eocd.buffer);
+  dv.setUint32(0, 0x06054b50, true);
+  dv.setUint16(4, 0, true); dv.setUint16(6, 0, true);
+  dv.setUint16(8, files.length, true); dv.setUint16(10, files.length, true);
+  dv.setUint32(12, centralSize, true); dv.setUint32(16, centralOffset, true);
+  dv.setUint16(20, 0, true);
+  let total = 0;
+  for(const p of localParts) total += p.length;
+  for(const c of central) total += c.length;
+  total += eocd.length;
+  const out = new Uint8Array(total);
+  let o=0;
+  for(const p of localParts){ out.set(p,o); o+=p.length; }
+  for(const c of central){ out.set(c,o); o+=c.length; }
+  out.set(eocd, o);
+  return out;
+}
+
+/* ---------- Language switcher init ---------- */
+window._rerenderI18nHooks.push(()=>{
+  // Step 1: group list (layer count caption)
+  if(Object.keys(APP.groups).length){
+    renderGroupList();
+    ingestStatus.textContent = t("s1.summary", {
+      layers: APP.files.length,
+      groups: Object.keys(APP.groups).length,
+    });
+  }
+  // Step 2: refresh border-preview captions (cheap — borderCache is reused)
+  if(borderPreview && borderPreview.children.length && Object.keys(APP.borderCache).length){
+    const tiles = [...borderPreview.querySelectorAll(".preview-tile")];
+    let i = 0;
+    for(const n of Object.keys(APP.groups).sort()){
+      const g = APP.groups[n];
+      for(const L of g.layers){
+        const tile = tiles[i++];
+        if(!tile) break;
+        const cap = tile.querySelector(".cap");
+        const b = computeBorderForLayer(g, L.idx);
+        if(cap) cap.textContent = t("s2.pathInfo", {
+          name: `${n}_${L.idx}`,
+          paths: b.polysWorkPx.length,
+          pts: totalPoints(b.polysWorkPx),
+        });
+      }
+    }
+  }
+  // Step 3: rebuild per-image cards (selects, labels, summary, split previews)
+  if(perImageList && perImageList.children.length) buildPerImagePanel();
+  // Step 3: nest preview captions/pills/warnings
+  if(APP.nestResult) renderNestPreview();
+  // Nest status line
+  if(APP.nestResult && nestStatus){
+    nestStatus.textContent = t("s3.nestDone", {
+      n: APP.nestResult.reduce((s,r)=>s+r.sheets.length,0),
+      ms: (APP.nestBench ? APP.nestBench.totalMs.toFixed(0) : "?"),
+    });
+  }
+  if(APP.nestResult && APP.nestBench) renderNestBench();
+});
+document.querySelectorAll("#langSwitch button").forEach(b=>{
+  b.addEventListener("click", ()=> setLang(b.dataset.lang));
+});
+setLang(LANG);
+
+gotoStep(1);
+</script>
+</body>
+</html>
